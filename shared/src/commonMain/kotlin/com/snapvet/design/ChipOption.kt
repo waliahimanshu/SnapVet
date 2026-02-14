@@ -11,16 +11,22 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.snapvet.design.theme.SnapVetColors
+import com.snapvet.design.theme.SnapVetTheme
 import com.snapvet.design.theme.SnapVetTypography
 
 data class ChipOption(
@@ -54,8 +60,8 @@ fun ChipSelector(
                     .background(bgColor)
                     .border(borderWidth, borderColor, RoundedCornerShape(8.dp))
                     .clickable(
-                        interactionSource = MutableInteractionSource(),
-                        indication = rememberRipple(color = Color.White.copy(alpha = 0.1f)),
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = ripple(color = Color.White.copy(alpha = 0.1f)),
                         onClick = { onSelectionChange(option.id) }
                     )
                     .padding(12.dp),
@@ -71,3 +77,55 @@ fun ChipSelector(
         }
     }
 }
+
+// region Previews
+
+@Preview(name = "Chip Selector - None Selected", showBackground = true)
+@Composable
+private fun ChipSelectorPreview() {
+    SnapVetTheme {
+        ChipSelector(
+            options = listOf(
+                ChipOption("normal", "Normal", SnapVetColors.AccentSuccess),
+                ChipOption("warning", "Warning", SnapVetColors.AccentWarning),
+                ChipOption("alert", "Alert", SnapVetColors.AccentAlert)
+            ),
+            selectedId = null
+        )
+    }
+}
+
+@Preview(name = "Chip Selector - Selected", showBackground = true)
+@Composable
+private fun ChipSelectorSelectedPreview() {
+    SnapVetTheme {
+        ChipSelector(
+            options = listOf(
+                ChipOption("normal", "Normal", SnapVetColors.AccentSuccess),
+                ChipOption("warning", "Warning", SnapVetColors.AccentWarning),
+                ChipOption("alert", "Alert", SnapVetColors.AccentAlert)
+            ),
+            selectedId = "warning"
+        )
+    }
+}
+
+@Preview(name = "Chip Selector - Interactive", showBackground = true)
+@Composable
+private fun ChipSelectorInteractivePreview() {
+    SnapVetTheme {
+        var selectedId by remember { mutableStateOf<String?>(null) }
+        ChipSelector(
+            options = listOf(
+                ChipOption("dog", "Dog"),
+                ChipOption("cat", "Cat"),
+                ChipOption("bird", "Bird"),
+                ChipOption("other", "Other")
+            ),
+            selectedId = selectedId,
+            onSelectionChange = { selectedId = it }
+        )
+    }
+}
+
+// endregion

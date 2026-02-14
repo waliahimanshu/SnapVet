@@ -66,3 +66,31 @@ struct ChipButton: View {
         .buttonStyle(PlainButtonStyle())
     }
 }
+
+// MARK: - Previews
+
+#Preview("ChipSelector - None Selected") {
+    ChipSelectorView(
+        options: [
+            ChipOption(id: "pink", label: "Pink (Normal)", color: Color(red: 1.0, green: 0.75, blue: 0.80)),
+            ChipOption(id: "pale", label: "Pale", color: Color(red: 1.0, green: 0.94, blue: 0.96)),
+            ChipOption(id: "red", label: "Red/Injected", color: Color(red: 1.0, green: 0.42, blue: 0.42))
+        ],
+        selectedId: nil
+    )
+    .padding(16)
+    .background(Color.snapvetPrimaryBg)
+}
+
+#Preview("ChipSelector - Selected") {
+    ChipSelectorView(
+        options: [
+            ChipOption(id: "pink", label: "Pink (Normal)", color: Color(red: 1.0, green: 0.75, blue: 0.80)),
+            ChipOption(id: "pale", label: "Pale", color: Color(red: 1.0, green: 0.94, blue: 0.96)),
+            ChipOption(id: "red", label: "Red/Injected", color: Color(red: 1.0, green: 0.42, blue: 0.42))
+        ],
+        selectedId: "pink"
+    )
+    .padding(16)
+    .background(Color.snapvetPrimaryBg)
+}

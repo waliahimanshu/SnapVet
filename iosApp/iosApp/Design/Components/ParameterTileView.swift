@@ -73,3 +73,38 @@ struct ParameterTileView: View {
         .buttonStyle(PlainButtonStyle())
     }
 }
+
+// MARK: - Previews
+
+#Preview("ParameterTile - Normal") {
+    ParameterTileView(
+        name: "Heart Rate",
+        value: "125",
+        unit: "bpm",
+        status: .normal
+    )
+    .padding(16)
+    .background(Color.snapvetPrimaryBg)
+}
+
+#Preview("ParameterTile - Warning") {
+    ParameterTileView(
+        name: "SpO2",
+        value: "94",
+        unit: "%",
+        status: .warning
+    )
+    .padding(16)
+    .background(Color.snapvetPrimaryBg)
+}
+
+#Preview("ParameterTile - Alert") {
+    ParameterTileView(
+        name: "BP Systolic",
+        value: "75",
+        unit: "mmHg",
+        status: .alert
+    )
+    .padding(16)
+    .background(Color.snapvetPrimaryBg)
+}

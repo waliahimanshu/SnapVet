@@ -1,0 +1,100 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Project Overview
+
+SnapVet is an offline-first veterinary anesthesia monitoring app for iPad and Android tablets, built with Kotlin Multiplatform. It records vital parameters during surgery with fast, tap-based data entry optimized for gloved hands. Currently in early development — design system components exist but core app screens and business logic are not yet implemented.
+
+## Build & Run Commands
+
+```bash
+# Android
+./gradlew :composeApp:assembleDebug
+
+# Desktop (JVM)
+./gradlew :composeApp:run
+
+# Server (Ktor)
+./gradlew :server:run
+
+# Web (Wasm - modern browsers)
+./gradlew :composeApp:wasmJsBrowserDevelopmentRun
+
+# Web (JS - older browsers)
+./gradlew :composeApp:jsBrowserDevelopmentRun
+
+# iOS - open iosApp/ directory in Xcode and run from there
+
+# Tests
+./gradlew :shared:allTests           # Shared module tests (all platforms)
+./gradlew :shared:jvmTest            # Shared module JVM tests only
+./gradlew :composeApp:allTests       # ComposeApp tests
+./gradlew :server:test               # Server tests
+```
+
+## Architecture
+
+### Module Structure
+
+- **`shared/`** — Kotlin Multiplatform library (Android + iOS + JVM + JS + WasmJS). Contains the design system and will contain domain models, database, repositories, use cases, and ViewModels. Produces an iOS framework named "Shared" (static).
+- **`composeApp/`** — Compose Multiplatform application (Android + Desktop + Web). Depends on `shared`. Contains the UI layer using Compose. Currently has a placeholder `App.kt`.
+- **`server/`** — Ktor server application (JVM only). Depends on `shared`. Runs on Netty.
+- **`iosApp/`** — Native SwiftUI iOS application. Imports the `Shared` framework from the shared module. Contains its own parallel implementation of design system components in Swift.
+
+### Dual Design System (Compose + SwiftUI) — CRITICAL
+
+Because the project uses native UI (Compose for Android, SwiftUI for iOS) rather than full Compose Multiplatform UI, every design component exists twice and must stay synchronized. When modifying a component, always update both the Compose and SwiftUI versions together:
+
+| Compose (shared)                                    | SwiftUI (iosApp)                                     |
+|-----------------------------------------------------|------------------------------------------------------|
+| `com.snapvet.design.theme.SnapVetColors`            | `Color+Extension.swift` (Color extensions)           |
+| `com.snapvet.design.theme.SnapVetTypography`        | `Font+Extension.swift`                               |
+| `com.snapvet.design.theme.SnapVetTheme`             | N/A (SwiftUI uses color/font extensions directly)    |
+| `com.snapvet.design.theme.DarkColorScheme`          | N/A (maps SnapVetColors to Material3 dark scheme)    |
+| `com.snapvet.design.component.parameter.ParameterTile` | `ParameterTileView.swift`                        |
+| `com.snapvet.design.component.input.NumericKeypad`  | `NumericKeypadView.swift`                            |
+| `com.snapvet.design.ChipSelector`                   | `ChipSelectorView.swift`                             |
+| `com.snapvet.design.component.parameter.ParameterStatus` | `ParameterStatus` enum in ParameterTileView.swift |
+
+Color values are defined in hex in `SnapVetColors` (Compose) and must match the RGB equivalents in `Color+Extension.swift` (SwiftUI). The prefix convention is `snapvet` for SwiftUI color extensions.
+
+### Package Structure
+
+- Shared Kotlin: `org.waliahimanshu.snapvet` (platform, greeting, constants) and `com.snapvet.design.*` (design system)
+- Android/ComposeApp: `org.waliahimanshu.snapvet`
+- Server: `org.waliahimanshu.snapvet`
+
+### Planned Architecture (not yet implemented)
+
+The README describes the target architecture for MVP1:
+- **data/local/** — SQLDelight database
+- **data/repository/** — Repository pattern
+- **domain/model/** — Data models (Case, VitalRecord, enums like Species, ECGReading, MucousMembraneReading)
+- **domain/usecase/** — Use cases (StartCase, SaveVitals, EndAnesthesia, etc.)
+- **viewmodel/** — Shared KMP ViewModels
+- **DI** — Koin
+- **iOS interop** — SKIE for Kotlin-to-Swift bridging
+
+## Key Technical Details
+
+- Kotlin 2.3.0, Compose Multiplatform 1.10.0, Ktor 3.3.3
+- JVM target: 11
+- Android: minSdk 24, targetSdk 36, compileSdk 36
+- iOS targets: iosArm64, iosSimulatorArm64
+- Gradle configuration cache and build cache enabled
+- The app uses a dark medical-grade UI theme (dark blue-gray backgrounds with medical green accents)
+- Always dark theme — `SnapVetTheme` ignores light/dark toggle and always uses `DarkColorScheme`
+- Compose Hot Reload plugin is enabled for the composeApp module
+
+## Design Conventions
+
+- Touch targets: minimum 44x44pt (iOS) / 48x48dp (Android) — optimized for gloved hands
+- Landscape-first tablet layout; grid adapts per device size (4x3 iPad, 2x6 smaller tablets)
+- Parameter tiles use `ParameterStatus` (NORMAL/WARNING/ALERT) to drive border and value colors
+- Numeric input uses a custom `NumericKeypad` component (not system keyboard)
+- Non-numeric parameters (ECG, CRT, Mucous Membrane) use `ChipSelector`
+
+## Preview Convention
+
+Each component file contains its own `@Preview` (Compose) or `#Preview` (SwiftUI) functions at the bottom — do not create separate preview files. Kotlin previews use `// region Previews` / `// endregion` markers. Swift previews use `// MARK: - Previews`.

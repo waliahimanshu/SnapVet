@@ -14,17 +14,20 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.snapvet.design.theme.SnapVetColors
+import com.snapvet.design.theme.SnapVetTheme
 import com.snapvet.design.theme.SnapVetTypography
 
 @Composable
@@ -42,8 +45,8 @@ fun NumericKeypadButton(
             .clip(RoundedCornerShape(8.dp))
             .background(bgColor)
             .clickable(
-                interactionSource = MutableInteractionSource(),
-                indication = rememberRipple(color = Color.White.copy(alpha = 0.2f)),
+                interactionSource = remember { MutableInteractionSource() },
+                indication = ripple(color = Color.White.copy(alpha = 0.2f)),
                 onClick = onClick
             )
             .aspectRatio(1f),
@@ -151,8 +154,8 @@ fun NumericKeypad(
                     .clip(RoundedCornerShape(8.dp))
                     .background(SnapVetColors.TileBg)
                     .clickable(
-                        interactionSource = MutableInteractionSource(),
-                        indication = rememberRipple(color = Color.White.copy(alpha = 0.1f)),
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = ripple(color = Color.White.copy(alpha = 0.1f)),
                         onClick = onCancel
                     ),
                 contentAlignment = Alignment.Center
@@ -171,8 +174,8 @@ fun NumericKeypad(
                     .clip(RoundedCornerShape(8.dp))
                     .background(SnapVetColors.AccentPrimary)
                     .clickable(
-                        interactionSource = MutableInteractionSource(),
-                        indication = rememberRipple(color = Color.White.copy(alpha = 0.2f)),
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = ripple(color = Color.White.copy(alpha = 0.2f)),
                         onClick = onConfirm
                     ),
                 contentAlignment = Alignment.Center
@@ -186,3 +189,50 @@ fun NumericKeypad(
         }
     }
 }
+
+// region Previews
+
+@Preview(name = "Numeric Keypad Button - Default", showBackground = true)
+@Composable
+private fun NumericKeypadButtonPreview() {
+    SnapVetTheme {
+        NumericKeypadButton(
+            label = "5",
+            onClick = {}
+        )
+    }
+}
+
+@Preview(name = "Numeric Keypad Button - Accent", showBackground = true)
+@Composable
+private fun NumericKeypadButtonAccentPreview() {
+    SnapVetTheme {
+        NumericKeypadButton(
+            label = "OK",
+            onClick = {},
+            isAccent = true
+        )
+    }
+}
+
+@Preview(name = "Numeric Keypad", showBackground = true)
+@Composable
+private fun NumericKeypadPreview() {
+    SnapVetTheme {
+        NumericKeypad(
+            currentValue = "98.6"
+        )
+    }
+}
+
+@Preview(name = "Numeric Keypad - Empty", showBackground = true)
+@Composable
+private fun NumericKeypadEmptyPreview() {
+    SnapVetTheme {
+        NumericKeypad(
+            currentValue = ""
+        )
+    }
+}
+
+// endregion

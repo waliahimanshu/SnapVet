@@ -111,3 +111,23 @@ struct NumericKeypadButton: View {
         .buttonStyle(PlainButtonStyle())
     }
 }
+
+// MARK: - Previews
+
+#Preview("NumericKeypad") {
+    NumericKeypadView(
+        currentValue: "125",
+        onConfirm: { print("Saved") }
+    )
+    .padding(16)
+    .background(Color.snapvetPrimaryBg)
+}
+
+#Preview("NumericKeypad - Empty") {
+    NumericKeypadView(
+        currentValue: "",
+        onConfirm: { print("Saved") }
+    )
+    .padding(16)
+    .background(Color.snapvetPrimaryBg)
+}

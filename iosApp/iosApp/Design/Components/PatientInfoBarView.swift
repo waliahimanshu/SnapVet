@@ -96,3 +96,25 @@ struct BatteryIndicatorView: View {
         .frame(width: 10, height: 8)
     }
 }
+
+// MARK: - Previews
+
+#Preview("PatientInfoBar - Dog") {
+    PatientInfoBarView(
+        patientName: "Max",
+        weight: "28.5",
+        species: "Dog",
+        elapsedTime: "12:34",
+        batteryLevel: 85
+    )
+}
+
+#Preview("PatientInfoBar - Cat") {
+    PatientInfoBarView(
+        patientName: "Whiskers",
+        weight: "4.2",
+        species: "Cat",
+        elapsedTime: "05:20",
+        batteryLevel: 35
+    )
+}

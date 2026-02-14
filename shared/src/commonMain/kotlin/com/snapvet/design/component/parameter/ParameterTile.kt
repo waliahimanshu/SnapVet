@@ -11,18 +11,21 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.ripple.rememberRipple
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.snapvet.design.theme.SnapVetColors
+import com.snapvet.design.theme.SnapVetTheme
 import com.snapvet.design.theme.SnapVetTypography
 
 @Composable
@@ -58,8 +61,8 @@ fun ParameterTile(
             .background(backgroundColor)
             .border(1.dp, borderColor, RoundedCornerShape(12.dp))
             .clickable(
-                interactionSource = MutableInteractionSource(),
-                indication = rememberRipple(bounded = true, color = Color.White.copy(alpha = 0.1f)),
+                interactionSource = remember { MutableInteractionSource() },
+                indication = ripple(bounded = true, color = Color.White.copy(alpha = 0.1f)),
                 onClick = onClick
             )
             .padding(16.dp),
@@ -81,7 +84,7 @@ fun ParameterTile(
             // Value
             Row(
                 horizontalArrangement = Arrangement.Center,
-                verticalAlignment = Alignment.Baseline
+                verticalAlignment = Alignment.Bottom
             ) {
                 Text(
                     text = value,
@@ -95,7 +98,7 @@ fun ParameterTile(
                         text = unit,
                         style = SnapVetTypography.bodySmall,
                         color = SnapVetColors.TextSecondary,
-                        modifier = Modifier.padding(start = 8.dp),
+                        modifier = Modifier.padding(start = 8.dp, bottom = 6.dp),
                         fontWeight = FontWeight.Medium
                     )
                 }
@@ -103,3 +106,88 @@ fun ParameterTile(
         }
     }
 }
+
+// region Previews
+
+@Preview(name = "Parameter Tile - Normal", showBackground = true)
+@Composable
+private fun ParameterTileNormalPreview() {
+    SnapVetTheme {
+        ParameterTile(
+            name = "Temperature",
+            value = "101.5",
+            unit = "°F",
+            status = ParameterStatus.NORMAL
+        )
+    }
+}
+
+@Preview(name = "Parameter Tile - Warning", showBackground = true)
+@Composable
+private fun ParameterTileWarningPreview() {
+    SnapVetTheme {
+        ParameterTile(
+            name = "Heart Rate",
+            value = "140",
+            unit = "bpm",
+            status = ParameterStatus.WARNING
+        )
+    }
+}
+
+@Preview(name = "Parameter Tile - Alert", showBackground = true)
+@Composable
+private fun ParameterTileAlertPreview() {
+    SnapVetTheme {
+        ParameterTile(
+            name = "Blood Pressure",
+            value = "180",
+            unit = "mmHg",
+            status = ParameterStatus.ALERT
+        )
+    }
+}
+
+@Preview(name = "Parameter Tile - All States", showBackground = true)
+@Composable
+private fun ParameterTileAllStatesPreview() {
+    SnapVetTheme {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            ParameterTile(
+                name = "Temperature",
+                value = "101.5",
+                unit = "°F",
+                status = ParameterStatus.NORMAL
+            )
+            ParameterTile(
+                name = "Heart Rate",
+                value = "140",
+                unit = "bpm",
+                status = ParameterStatus.WARNING
+            )
+            ParameterTile(
+                name = "Blood Pressure",
+                value = "180",
+                unit = "mmHg",
+                status = ParameterStatus.ALERT
+            )
+        }
+    }
+}
+
+@Preview(name = "Parameter Tile - No Unit", showBackground = true)
+@Composable
+private fun ParameterTileNoUnitPreview() {
+    SnapVetTheme {
+        ParameterTile(
+            name = "Weight",
+            value = "25",
+            status = ParameterStatus.NORMAL
+        )
+    }
+}
+
+// endregion
