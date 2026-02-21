@@ -1,12 +1,15 @@
 import SwiftUI
 import Shared
+import UIKit
 
 struct RecordTableScreen: View {
     @ObservedObject var viewModel: RecordTableViewModelWrapper
     let caseInfo: Case
     var onDeleteCase: () -> Void = {}
 
-    @State private var showExportInfo = false
+    @State private var showShareSheet = false
+    @State private var shareItems: [Any] = []
+    @State private var exportErrorMessage: String?
     @State private var showDeleteConfirm = false
 
     private let columns: [(String, CGFloat)] = [
@@ -23,7 +26,8 @@ struct RecordTableScreen: View {
         ("O₂", 54),
         ("ECG", 94),
         ("CRT", 84),
-        ("MM", 98)
+        ("MM", 98),
+        ("Notes", 220)
     ]
 
     var body: some View {
@@ -45,10 +49,50 @@ struct RecordTableScreen: View {
                 .padding(.bottom, 20)
             }
         }
-        .alert("Export PDF", isPresented: $showExportInfo) {
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button(action: { showDeleteConfirm = true }) {
+                    Image(systemName: "trash")
+                        .font(SnapVetFont.titleMedium.weight(.bold))
+                        .foregroundColor(.white)
+                        .frame(width: 30, height: 30)
+                        .background(
+                            Circle()
+                                .fill(Color.snapvetAccentAlert)
+                        )
+                }
+                .buttonStyle(.plain)
+                .padding(.leading, 8)
+            }
+
+            ToolbarItem(placement: .topBarTrailing) {
+                Button(action: exportPdf) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "doc")
+                        Text("Export")
+                    }
+                    .font(SnapVetFont.titleMedium.weight(.semibold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(
+                        Capsule()
+                            .fill(Color.snapvetAccentPrimary)
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .sheet(isPresented: $showShareSheet) {
+            ShareSheet(activityItems: shareItems)
+        }
+        .alert("Export Failed", isPresented: Binding(
+            get: { exportErrorMessage != nil },
+            set: { if !$0 { exportErrorMessage = nil } }
+        )) {
             Button("OK", role: .cancel) {}
         } message: {
-            Text("PDF export UI is wired. The document generator is still pending implementation.")
+            Text(exportErrorMessage ?? "Could not generate PDF.")
         }
         .alert("Delete this case?", isPresented: $showDeleteConfirm) {
             Button("Cancel", role: .cancel) {}
@@ -62,40 +106,6 @@ struct RecordTableScreen: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Spacer()
-
-                HStack(spacing: 8) {
-                    Button(action: { showExportInfo = true }) {
-                        HStack(spacing: 6) {
-                            Image(systemName: "doc")
-                            Text("Export PDF")
-                        }
-                        .font(SnapVetFont.titleMedium.weight(.semibold))
-                        .foregroundColor(.white)
-                        .padding(.horizontal, 14)
-                        .frame(height: 42)
-                        .background(
-                            RoundedRectangle(cornerRadius: 11, style: .continuous)
-                                .fill(Color.snapvetAccentPrimary)
-                        )
-                    }
-                    .buttonStyle(.plain)
-
-                    Button(action: { showDeleteConfirm = true }) {
-                        Image(systemName: "trash")
-                            .font(SnapVetFont.titleMedium.weight(.bold))
-                            .foregroundColor(.white)
-                            .frame(width: 42, height: 42)
-                            .background(
-                                RoundedRectangle(cornerRadius: 11, style: .continuous)
-                                    .fill(Color.snapvetAccentAlert)
-                            )
-                    }
-                    .buttonStyle(.plain)
-                }
-            }
-
             Text(caseInfo.patientName)
                 .font(SnapVetFont.headlineLarge)
                 .foregroundColor(.snapvetTextPrimary)
@@ -191,6 +201,7 @@ struct RecordTableScreen: View {
             tableCell(displayEnum(record.ecg?.name), width: 94)
             tableCell(displayEnum(record.crt?.name), width: 84)
             tableCell(displayEnum(record.mucousMembrane?.name), width: 98)
+            tableCell(record.notes ?? "-", width: 220)
         }
         .frame(height: 42)
         .overlay(alignment: .bottom) {
@@ -265,6 +276,130 @@ struct RecordTableScreen: View {
         }
         return String(format: "%.1f", value)
     }
+
+    private func exportPdf() {
+        do {
+            let data = buildPdfData()
+            let fileName = "SnapVet-\(sanitizedFileName(caseInfo.patientName))-\(DateFormatter.snapvetExportStamp.string(from: Date())).pdf"
+            let url = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
+            try data.write(to: url, options: .atomic)
+            shareItems = [url]
+            showShareSheet = true
+        } catch {
+            exportErrorMessage = error.localizedDescription
+        }
+    }
+
+    private func buildPdfData() -> Data {
+        let pageRect = CGRect(x: 0, y: 0, width: 595, height: 842) // A4 @ 72dpi
+        let renderer = UIGraphicsPDFRenderer(bounds: pageRect)
+        let margin: CGFloat = 32
+        let contentWidth = pageRect.width - (margin * 2)
+        let titleAttrs: [NSAttributedString.Key: Any] = [
+            .font: UIFont.boldSystemFont(ofSize: 20),
+            .foregroundColor: UIColor.black
+        ]
+        let headerAttrs: [NSAttributedString.Key: Any] = [
+            .font: UIFont.systemFont(ofSize: 11, weight: .semibold),
+            .foregroundColor: UIColor.darkGray
+        ]
+        let bodyAttrs: [NSAttributedString.Key: Any] = [
+            .font: UIFont.systemFont(ofSize: 11, weight: .regular),
+            .foregroundColor: UIColor.black
+        ]
+
+        return renderer.pdfData { context in
+            var y: CGFloat = 0
+
+            func drawLine(_ text: String, attrs: [NSAttributedString.Key: Any], spacing: CGFloat = 4) {
+                let rect = CGRect(x: margin, y: y, width: contentWidth, height: .greatestFiniteMagnitude)
+                let size = (text as NSString).boundingRect(
+                    with: CGSize(width: rect.width, height: .greatestFiniteMagnitude),
+                    options: [.usesLineFragmentOrigin, .usesFontLeading],
+                    attributes: attrs,
+                    context: nil
+                ).size
+                (text as NSString).draw(
+                    in: CGRect(x: rect.minX, y: rect.minY, width: rect.width, height: ceil(size.height)),
+                    withAttributes: attrs
+                )
+                y += ceil(size.height) + spacing
+            }
+
+            func beginPage(showCaseHeader: Bool) {
+                context.beginPage()
+                y = margin
+                drawLine("SnapVet Vital Records Export", attrs: titleAttrs, spacing: 10)
+                if showCaseHeader {
+                    drawLine("Patient: \(caseInfo.patientName)", attrs: headerAttrs)
+                    drawLine("Species: \(displaySpecies(caseInfo.species))   Weight: \(displayWeight(caseInfo.weight))", attrs: headerAttrs)
+                    drawLine("Procedure: \(caseInfo.procedure)", attrs: headerAttrs)
+                    drawLine("Case Date: \(formatDate(caseInfo.startTime))   Duration: \(durationText)", attrs: headerAttrs)
+                    drawLine("Generated: \(DateFormatter.snapvetExportDateTime.string(from: Date()))", attrs: headerAttrs, spacing: 10)
+                } else {
+                    drawLine("Continued", attrs: headerAttrs, spacing: 10)
+                }
+            }
+
+            beginPage(showCaseHeader: true)
+
+            if viewModel.state.records.isEmpty {
+                drawLine("No vital records saved.", attrs: bodyAttrs)
+                return
+            }
+
+            for (index, record) in viewModel.state.records.enumerated() {
+                let recordNumber = viewModel.state.records.count - index
+                let notes = (record.notes?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false) ? (record.notes ?? "-") : "-"
+                let lines = [
+                    "#\(recordNumber)  \(formatTime(record.timestamp))",
+                    "HR \(record.hr?.intValue.description ?? "-")   RR \(record.rr?.intValue.description ?? "-")   SpO₂ \(record.spo2?.intValue.description ?? "-")   EtCO₂ \(record.etco2?.intValue.description ?? "-")",
+                    "BP \(record.bpSys?.intValue.description ?? "-")/\(record.bpDia?.intValue.description ?? "-")/\(record.bpMap?.intValue.description ?? "-")   Temp \(formatDouble(record.temp?.doubleValue))   Iso \(formatDouble(record.sevoIso?.doubleValue))   O₂ \(formatDouble(record.o2Flow?.doubleValue))",
+                    "ECG \(displayEnum(record.ecg?.name))   CRT \(displayEnum(record.crt?.name))   MM \(displayEnum(record.mucousMembrane?.name))",
+                    "Notes: \(notes)"
+                ]
+
+                var estimatedHeight: CGFloat = 0
+                for line in lines {
+                    let size = (line as NSString).boundingRect(
+                        with: CGSize(width: contentWidth, height: .greatestFiniteMagnitude),
+                        options: [.usesLineFragmentOrigin, .usesFontLeading],
+                        attributes: bodyAttrs,
+                        context: nil
+                    ).size
+                    estimatedHeight += ceil(size.height) + 4
+                }
+                estimatedHeight += 8
+
+                if y + estimatedHeight > pageRect.height - margin {
+                    beginPage(showCaseHeader: false)
+                }
+
+                for line in lines {
+                    drawLine(line, attrs: bodyAttrs)
+                }
+
+                let separatorY = y + 2
+                let separator = UIBezierPath()
+                separator.move(to: CGPoint(x: margin, y: separatorY))
+                separator.addLine(to: CGPoint(x: pageRect.width - margin, y: separatorY))
+                UIColor.lightGray.setStroke()
+                separator.lineWidth = 0.5
+                separator.stroke()
+                y += 8
+            }
+        }
+    }
+
+    private func sanitizedFileName(_ value: String) -> String {
+        let allowed = CharacterSet.alphanumerics.union(CharacterSet(charactersIn: "-_"))
+        let compact = value
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .replacingOccurrences(of: " ", with: "_")
+        let cleaned = compact.unicodeScalars.map { allowed.contains($0) ? Character($0) : "_" }
+        let result = String(cleaned)
+        return result.isEmpty ? "Case" : result
+    }
 }
 
 private extension DateFormatter {
@@ -281,6 +416,29 @@ private extension DateFormatter {
         formatter.timeStyle = .none
         return formatter
     }()
+
+    static let snapvetExportDateTime: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .medium
+        return formatter
+    }()
+
+    static let snapvetExportStamp: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyyMMdd-HHmmss"
+        return formatter
+    }()
+}
+
+private struct ShareSheet: UIViewControllerRepresentable {
+    let activityItems: [Any]
+
+    func makeUIViewController(context: Context) -> UIActivityViewController {
+        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
+    }
+
+    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
 private extension View {

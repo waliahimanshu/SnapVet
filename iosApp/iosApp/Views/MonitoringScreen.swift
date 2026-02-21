@@ -54,6 +54,8 @@ struct MonitoringScreen: View {
     @State private var shouldReplaceOnNextInput = false
     @State private var showDiscardConfirm = false
     @State private var showEndConfirm = false
+    @State private var previousIdleTimerDisabled = false
+    @FocusState private var isNotesFieldFocused: Bool
 
     private var state: MonitoringState { viewModel.state }
     private var current: VitalsInput { state.currentVitals }
@@ -73,7 +75,6 @@ struct MonitoringScreen: View {
 
                 ScrollView {
                     VStack(spacing: 14) {
-                        topActionsRow
                         header
 
                         if isWide {
@@ -166,6 +167,25 @@ struct MonitoringScreen: View {
                 }
                 .accessibilityLabel("Back")
             }
+
+            ToolbarItem(placement: .topBarTrailing) {
+                Button(action: { showEndConfirm = true }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "stop.circle.fill")
+                        Text("End")
+                    }
+                    .font(SnapVetFont.titleMedium.weight(.semibold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(
+                        Capsule()
+                            .fill(Color.snapvetAccentAlert)
+                    )
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("End Anesthesia")
+            }
         }
         .confirmationDialog(
             "Discard session?",
@@ -186,6 +206,13 @@ struct MonitoringScreen: View {
             }
         } message: {
             Text("This marks the case as completed. You can still view records from Case History.")
+        }
+        .onAppear {
+            previousIdleTimerDisabled = UIApplication.shared.isIdleTimerDisabled
+            UIApplication.shared.isIdleTimerDisabled = true
+        }
+        .onDisappear {
+            UIApplication.shared.isIdleTimerDisabled = previousIdleTimerDisabled
         }
     }
 
@@ -216,31 +243,6 @@ struct MonitoringScreen: View {
         }
         .padding(16)
         .snapVetGlassCard(cornerRadius: 20)
-    }
-
-    private var topActionsRow: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Spacer()
-
-                Button(action: { showEndConfirm = true }) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "stop.circle")
-                        Text("End Anesthesia")
-                    }
-                    .font(SnapVetFont.titleMedium.weight(.semibold))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 14)
-                    .frame(height: 44)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(Color.snapvetAccentAlert)
-                    )
-                }
-                .buttonStyle(.plain)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .trailing)
     }
 
     private func vitalsGrid(columns: Int) -> some View {
@@ -331,6 +333,10 @@ struct MonitoringScreen: View {
             Text("MM: \(displayEnum(record.mucousMembrane?.name, fallback: "-"))")
                 .font(SnapVetFont.bodySmall)
                 .foregroundColor(.snapvetTextSecondary)
+            Text("Notes: \(record.notes ?? "-")")
+                .font(SnapVetFont.bodySmall)
+                .foregroundColor(.snapvetTextSecondary)
+                .lineLimit(2)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
@@ -398,6 +404,7 @@ struct MonitoringScreen: View {
                         set: { viewModel.updateNotes($0) }
                     )
                 )
+                .focused($isNotesFieldFocused)
                 .padding(.horizontal, 14)
                 .frame(height: 46)
                 .background(
@@ -452,6 +459,8 @@ struct MonitoringScreen: View {
     private var saveBar: some View {
         VStack(spacing: 6) {
             Button(action: {
+                dismissKeyboard()
+                isNotesFieldFocused = false
                 feedbackSaveAction()
                 viewModel.save()
             }) {
@@ -652,6 +661,15 @@ struct MonitoringScreen: View {
     private func feedbackSaveAction() {
         let generator = UIImpactFeedbackGenerator(style: .medium)
         generator.impactOccurred()
+    }
+
+    private func dismissKeyboard() {
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder),
+            to: nil,
+            from: nil,
+            for: nil
+        )
     }
 
     private func displaySpecies(_ value: String) -> String {
