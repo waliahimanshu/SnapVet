@@ -50,7 +50,7 @@ struct CaseSetupScreen: View {
                 .textFieldStyle(.roundedBorder)
                 .focused($focusedField, equals: .protocolField)
 
-                Button("Start Anesthesia") {
+                Button("Next") {
                     focusedField = nil
                     viewModel.startCase()
                 }
@@ -74,7 +74,7 @@ struct CaseSetupScreen: View {
         .onChange(of: viewModel.state.createdCase?.id) { _ in
             if let created = viewModel.state.createdCase { onCaseCreated(created) }
         }
-        .navigationTitle("Case Setup")
+        .navigationTitle("New Case")
     }
 
     private var canStartCase: Bool {

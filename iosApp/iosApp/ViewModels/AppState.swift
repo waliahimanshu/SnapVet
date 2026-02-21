@@ -5,7 +5,6 @@ import Shared
 final class AppState: ObservableObject {
     @Published var activeCaseId: String? = nil
     @Published var activeCase: Case? = nil
-    @Published var selectedTab: AppTab = .monitoring
 
     let provider: RepositoryProvider
     private let endAnesthesiaUsecase: EndAnesthesiaUsecase
@@ -46,6 +45,13 @@ final class AppState: ObservableObject {
         )
     }
 
+    func prepareNewCase() {
+        activeCaseId = nil
+        activeCase = nil
+        monitoringWrapper = nil
+        recordTableWrapper = nil
+    }
+
     func startSession(caseInfo: Case) {
         activeCaseId = caseInfo.id
         activeCase = caseInfo
@@ -74,7 +80,6 @@ final class AppState: ObservableObject {
                 scope: nil
             )
         )
-        selectedTab = .monitoring
     }
 
     func endSession() {
@@ -83,13 +88,9 @@ final class AppState: ObservableObject {
                 _ = try? await endAnesthesiaUsecase.invoke(caseId: caseId)
             }
         }
-        selectedTab = .records
     }
-}
 
-enum AppTab: Hashable {
-    case cases
-    case setup
-    case monitoring
-    case records
+    func resetFlowToBrowse() {
+        prepareNewCase()
+    }
 }
