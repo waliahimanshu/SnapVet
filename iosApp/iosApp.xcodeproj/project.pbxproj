@@ -8,7 +8,12 @@
 
 /* Begin PBXFileReference section */
 		B7A54A52059034B8CF3DBD73 /* SnapVet.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SnapVet.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		8F1C6F409B2A4D1E7C3A5B6C /* libsqlite3.tbd */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.text-based-dylib-definition; name = libsqlite3.tbd; path = usr/lib/libsqlite3.tbd; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
+
+/* Begin PBXBuildFile section */
+		8F1C6F3F9B2A4D1E7C3A5B6C /* libsqlite3.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F1C6F409B2A4D1E7C3A5B6C /* libsqlite3.tbd */; };
+/* End PBXBuildFile section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
 		3CFDC061F04016BE2BD6ABD8 /* Exceptions for "iosApp" folder in "iosApp" target */ = {
@@ -41,6 +46,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				8F1C6F3F9B2A4D1E7C3A5B6C /* libsqlite3.tbd in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -52,8 +58,17 @@
 			children = (
 				7B00EB202C09A0C4DC1C6DD2 /* Configuration */,
 				13FE402DF3769AC16CF957D2 /* iosApp */,
+				8F1C6F419B2A4D1E7C3A5B6C /* Frameworks */,
 				F6A308E63284D3281CBB47E8 /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		8F1C6F419B2A4D1E7C3A5B6C /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				8F1C6F409B2A4D1E7C3A5B6C /* libsqlite3.tbd */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 		F6A308E63284D3281CBB47E8 /* Products */ = {

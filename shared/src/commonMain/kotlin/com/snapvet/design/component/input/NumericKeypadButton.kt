@@ -8,9 +8,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -38,7 +38,7 @@ fun NumericKeypadButton(
     isAccent: Boolean = false
 ) {
     val bgColor = if (isAccent) SnapVetColors.AccentPrimary else SnapVetColors.TileBg
-    val textColor = if (isAccent) Color.White else SnapVetColors.TextPrimary
+    val textColor = Color.White
 
     Box(
         modifier = modifier
@@ -49,7 +49,7 @@ fun NumericKeypadButton(
                 indication = ripple(color = Color.White.copy(alpha = 0.2f)),
                 onClick = onClick
             )
-            .aspectRatio(1f),
+            .heightIn(min = 60.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
@@ -74,26 +74,28 @@ fun NumericKeypad(
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
             .background(SnapVetColors.HeaderBg)
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         // Current value display
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(SnapVetColors.TileBg, RoundedCornerShape(8.dp))
-                .padding(16.dp)
+                .heightIn(min = 80.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(SnapVetColors.TileBg)
+                .padding(bottom = 8.dp),
+            contentAlignment = Alignment.Center
         ) {
             Text(
                 text = currentValue.ifEmpty { "0" },
-                style = SnapVetTypography.displayLarge.copy(fontSize = 60.sp),
+                style = SnapVetTypography.displayLarge.copy(letterSpacing = (-1).sp),
                 color = SnapVetColors.AccentPrimary,
                 fontWeight = FontWeight.Bold
             )
         }
-
-        Spacer(modifier = Modifier.height(12.dp))
 
         // Number buttons grid
         repeat(3) { row ->
@@ -108,7 +110,9 @@ fun NumericKeypad(
                     NumericKeypadButton(
                         label = number,
                         onClick = { onNumberClick(number) },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
                     )
                 }
             }
@@ -124,21 +128,25 @@ fun NumericKeypad(
             NumericKeypadButton(
                 label = "0",
                 onClick = { onNumberClick("0") },
-                modifier = Modifier.weight(1f)
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
             )
             NumericKeypadButton(
                 label = ".",
                 onClick = onDecimalClick,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
             )
             NumericKeypadButton(
                 label = "⌫",
                 onClick = onBackspaceClick,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
             )
         }
-
-        Spacer(modifier = Modifier.height(8.dp))
 
         // Action buttons
         Row(

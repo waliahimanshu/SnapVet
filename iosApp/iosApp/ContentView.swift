@@ -1,33 +1,38 @@
 import SwiftUI
-import Shared
 
 struct ContentView: View {
-    @State private var showContent = false
+    @StateObject private var appState = AppState()
+
     var body: some View {
-        VStack {
-            Button("Click me!") {
-                withAnimation {
-                    showContent = !showContent
+        TabView(selection: $appState.selectedTab) {
+            CaseListScreen(viewModel: appState.caseListWrapper)
+                .tabItem { Label("Cases", systemImage: "list.bullet") }
+                .tag(AppTab.cases)
+
+            CaseSetupScreen(viewModel: appState.caseSetupWrapper) { caseId in
+                appState.startSession(caseId: caseId)
+            }
+            .tabItem { Label("Setup", systemImage: "plus.circle") }
+            .tag(AppTab.setup)
+
+            if let monitoring = appState.monitoringWrapper {
+                MonitoringScreen(viewModel: monitoring) {
+                    appState.endSession()
                 }
+                    .tabItem { Label("Monitor", systemImage: "waveform.path.ecg") }
+                    .tag(AppTab.monitoring)
             }
 
-            if showContent {
-                VStack(spacing: 16) {
-                    Image(systemName: "swift")
-                        .font(.system(size: 200))
-                        .foregroundColor(.accentColor)
-                    Text("SwiftUI: \(Greeting().greet())")
-                }
-                .transition(.move(edge: .top).combined(with: .opacity))
+            if let records = appState.recordTableWrapper {
+                RecordTableScreen(viewModel: records)
+                    .tabItem { Label("Records", systemImage: "tablecells") }
+                    .tag(AppTab.records)
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .padding()
+        .background(Color.snapvetPrimaryBg)
     }
 }
 
-struct ContentView_Previews: PreviewProvider {
-    static var previews: some View {
-        ContentView()
-    }
+#Preview {
+    ContentView()
 }

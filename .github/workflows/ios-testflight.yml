@@ -1,0 +1,95 @@
+name: iOS TestFlight
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "ios/v*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-testflight-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  testflight:
+    name: Build and Upload to TestFlight
+    runs-on: macos-15
+    environment: testflight
+    env:
+      BUNDLE_GEMFILE: iosApp/Gemfile
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_API_KEY_P8: ${{ secrets.ASC_API_KEY_P8 }}
+      MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
+      MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
+      MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
+      MATCH_GIT_BRANCH: ${{ secrets.MATCH_GIT_BRANCH }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      APP_BUNDLE_ID: ${{ secrets.APP_BUNDLE_ID }}
+      APPSTORE_APPLE_ID: ${{ secrets.APPSTORE_APPLE_ID }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Preflight required secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          required=(
+            ASC_KEY_ID
+            ASC_ISSUER_ID
+            ASC_API_KEY_P8
+            MATCH_GIT_URL
+            MATCH_PASSWORD
+            MATCH_GIT_BASIC_AUTHORIZATION
+            APPLE_TEAM_ID
+            APP_BUNDLE_ID
+            APPSTORE_APPLE_ID
+          )
+          missing=()
+          for name in "${required[@]}"; do
+            value="${!name:-}"
+            if [[ -z "${value// }" ]]; then
+              missing+=("$name")
+            fi
+          done
+          if (( ${#missing[@]} > 0 )); then
+            printf 'Missing required secrets: %s\n' "${missing[*]}"
+            exit 1
+          fi
+
+      - name: Select Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Ruby and Bundler
+        uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+
+      - name: Ensure Gradle executable
+        run: chmod +x ./gradlew
+
+      - name: Build and upload TestFlight
+        working-directory: iosApp
+        run: bundle exec fastlane ios beta
+
+      - name: Build summary
+        if: success()
+        run: |
+          echo "## iOS TestFlight upload completed" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Ref: $GITHUB_REF" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Run number: $GITHUB_RUN_NUMBER" >> "$GITHUB_STEP_SUMMARY"

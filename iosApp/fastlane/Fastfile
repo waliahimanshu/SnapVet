@@ -1,0 +1,93 @@
+def required_env(name)
+  value = ENV[name]
+  UI.user_error!("Missing required environment variable: #{name}") if value.nil? || value.strip.empty?
+  value
+end
+
+def asc_api_key
+  app_store_connect_api_key(
+    key_id: required_env("ASC_KEY_ID"),
+    issuer_id: required_env("ASC_ISSUER_ID"),
+    key_content: required_env("ASC_API_KEY_P8"),
+    is_key_content_base64: false,
+    in_house: false
+  )
+end
+
+platform :ios do
+  desc "Build and upload iOS app to TestFlight"
+  lane :beta do
+    setup_ci if ENV["CI"]
+
+    api_key = asc_api_key
+
+    match(
+      type: "appstore",
+      readonly: true,
+      app_identifier: required_env("APP_BUNDLE_ID"),
+      api_key: api_key
+    )
+
+    if ENV["GITHUB_RUN_NUMBER"] && !ENV["GITHUB_RUN_NUMBER"].empty?
+      increment_build_number(
+        xcodeproj: "iosApp.xcodeproj",
+        build_number: ENV["GITHUB_RUN_NUMBER"]
+      )
+    end
+
+    version = get_version_number(
+      xcodeproj: "iosApp.xcodeproj",
+      target: "iosApp"
+    )
+
+    build_number = get_build_number(
+      xcodeproj: "iosApp.xcodeproj"
+    )
+
+    build_app(
+      project: "iosApp.xcodeproj",
+      scheme: "iosApp",
+      configuration: "Release",
+      clean: true,
+      export_method: "app-store",
+      output_directory: "build/ios",
+      output_name: "SnapVet.ipa"
+    )
+
+    upload_to_testflight(
+      api_key: api_key,
+      app_identifier: required_env("APP_BUNDLE_ID"),
+      skip_waiting_for_build_processing: true,
+      distribute_external: false
+    )
+
+    UI.message("Uploaded to TestFlight - version #{version} (#{build_number})")
+  end
+
+  desc "Submit an existing TestFlight build to App Store review"
+  lane :submit do |options|
+    api_key = asc_api_key
+
+    version = options[:app_version].to_s.strip
+    build_number = options[:build_number].to_s.strip
+
+    UI.user_error!("app_version is required") if version.empty?
+    UI.user_error!("build_number is required") if build_number.empty?
+
+    deliver(
+      api_key: api_key,
+      app_identifier: required_env("APP_BUNDLE_ID"),
+      apple_id: required_env("APPSTORE_APPLE_ID"),
+      app_version: version,
+      build_number: build_number,
+      skip_binary_upload: true,
+      skip_metadata: true,
+      skip_screenshots: true,
+      submit_for_review: true,
+      automatic_release: false,
+      force: true
+    )
+
+    UI.message("Submitted to App Store review - version #{version} (#{build_number})")
+  end
+end

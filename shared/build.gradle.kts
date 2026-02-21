@@ -1,5 +1,3 @@
-import org.jetbrains.kotlin.gradle.ExperimentalWasmDsl
-import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.plugin.mpp.apple.XCFramework
 
 plugins {
@@ -7,14 +5,14 @@ plugins {
     alias(libs.plugins.androidLibrary)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
+    alias(libs.plugins.sqldelight)
+    alias(libs.plugins.skie)
 }
 
 kotlin {
-    androidTarget {
-        compilerOptions {
-            jvmTarget.set(JvmTarget.JVM_11)
-        }
-    }
+    jvmToolchain(17)
+
+    androidTarget()
     
     val xcf = XCFramework("Shared")
 
@@ -25,6 +23,7 @@ kotlin {
         iosTarget.binaries.framework {
             baseName = "Shared"
             isStatic = true
+            freeCompilerArgs += listOf("-Xbinary=bundleId=com.snapvet.shared")
             xcf.add(this)
         }
     }
@@ -35,13 +34,9 @@ kotlin {
         browser()
     }
     
-    @OptIn(ExperimentalWasmDsl::class)
-    wasmJs {
-        browser()
-    }
-    
     sourceSets {
         androidMain.dependencies {
+            implementation(libs.sqldelight.android.driver)
             implementation(libs.compose.uiToolingPreview)
         }
         commonMain.dependencies {
@@ -51,6 +46,13 @@ kotlin {
             implementation(libs.compose.ui)
             implementation(libs.compose.components.resources)
             implementation(libs.compose.uiToolingPreview)
+            implementation(libs.kotlinx.coroutines.core)
+            implementation(libs.kotlinx.datetime)
+            implementation(libs.sqldelight.runtime)
+            implementation(libs.sqldelight.coroutines.extensions)
+        }
+        iosMain.dependencies {
+            implementation(libs.sqldelight.native.driver)
         }
         commonTest.dependencies {
             implementation(libs.kotlin.test)
@@ -72,4 +74,15 @@ android {
 
 dependencies {
     debugImplementation(libs.compose.uiTooling)
+}
+
+sqldelight {
+    databases {
+        create("SnapVetDatabase") {
+            packageName.set("com.snapvet.db")
+            version = 1
+            schemaOutputDirectory.set(file("sqldelight/schema"))
+            verifyMigrations.set(true)
+        }
+    }
 }

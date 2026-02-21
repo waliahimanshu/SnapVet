@@ -1,0 +1,3 @@
+app_identifier(ENV.fetch("APP_BUNDLE_ID"))
+team_id(ENV.fetch("APPLE_TEAM_ID"))
+apple_id(ENV["APPSTORE_APPLE_ID"]) if ENV["APPSTORE_APPLE_ID"]

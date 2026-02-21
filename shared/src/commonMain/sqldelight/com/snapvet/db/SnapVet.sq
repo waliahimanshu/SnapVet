@@ -1,0 +1,88 @@
+CREATE TABLE cases (
+    id TEXT NOT NULL PRIMARY KEY,
+    patient_name TEXT NOT NULL,
+    species TEXT NOT NULL,
+    weight REAL NOT NULL,
+    procedure TEXT NOT NULL,
+    anesthetic_protocol TEXT NOT NULL,
+    start_time INTEGER NOT NULL,
+    end_time INTEGER,
+    status TEXT NOT NULL
+);
+
+CREATE TABLE vital_records (
+    id TEXT NOT NULL PRIMARY KEY,
+    case_id TEXT NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
+    timestamp INTEGER NOT NULL,
+    hr INTEGER,
+    rr INTEGER,
+    spo2 INTEGER,
+    etco2 INTEGER,
+    bp_sys INTEGER,
+    bp_dia INTEGER,
+    bp_map INTEGER,
+    temp REAL,
+    sevo_iso REAL,
+    o2_flow REAL,
+    ecg TEXT,
+    crt TEXT,
+    mucous_membrane TEXT,
+    notes TEXT
+);
+
+CREATE INDEX vital_records_case_id_timestamp ON vital_records(case_id, timestamp);
+
+insertCase:
+INSERT OR REPLACE INTO cases(
+    id,
+    patient_name,
+    species,
+    weight,
+    procedure,
+    anesthetic_protocol,
+    start_time,
+    end_time,
+    status
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+selectCaseById:
+SELECT * FROM cases WHERE id = ?;
+
+selectAllCases:
+SELECT * FROM cases ORDER BY start_time DESC;
+
+selectActiveCases:
+SELECT * FROM cases WHERE status = 'ACTIVE' ORDER BY start_time DESC;
+
+selectCasesByStatus:
+SELECT * FROM cases WHERE status = ? ORDER BY start_time DESC;
+
+updateCaseStatus:
+UPDATE cases SET status = ?, end_time = ? WHERE id = ?;
+
+insertVitalRecord:
+INSERT INTO vital_records(
+    id,
+    case_id,
+    timestamp,
+    hr,
+    rr,
+    spo2,
+    etco2,
+    bp_sys,
+    bp_dia,
+    bp_map,
+    temp,
+    sevo_iso,
+    o2_flow,
+    ecg,
+    crt,
+    mucous_membrane,
+    notes
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+selectVitalRecordsForCase:
+SELECT * FROM vital_records WHERE case_id = ? ORDER BY timestamp DESC;
+
+selectLatestVitalRecordForCase:
+SELECT * FROM vital_records WHERE case_id = ? ORDER BY timestamp DESC LIMIT 1;

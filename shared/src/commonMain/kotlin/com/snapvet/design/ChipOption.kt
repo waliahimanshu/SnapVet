@@ -7,6 +7,8 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -64,15 +66,31 @@ fun ChipSelector(
                         indication = ripple(color = Color.White.copy(alpha = 0.1f)),
                         onClick = { onSelectionChange(option.id) }
                     )
-                    .padding(12.dp),
+                    .padding(horizontal = 12.dp),
                 contentAlignment = Alignment.CenterStart
             ) {
-                Text(
-                    text = option.label,
-                    style = SnapVetTypography.bodyLarge,
-                    color = if (isSelected) SnapVetColors.AccentPrimary else SnapVetColors.TextPrimary,
-                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = option.label,
+                        style = SnapVetTypography.bodyLarge,
+                        color = if (isSelected) SnapVetColors.AccentPrimary else SnapVetColors.TextPrimary,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                    )
+
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    if (isSelected) {
+                        Text(
+                            text = "✓",
+                            style = SnapVetTypography.bodyLarge,
+                            color = SnapVetColors.AccentPrimary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
             }
         }
     }

@@ -35,6 +35,12 @@ SnapVet is an offline-first veterinary anesthesia monitoring app for iPad and An
 ./gradlew :server:test               # Server tests
 ```
 
+## iOS Release Automation
+
+- iOS release uses a two-step GitHub Actions pipeline: TestFlight upload first, then a separate manual App Store submission workflow.
+- Full setup, secrets, and operating steps are documented in `docs/ios-release-pipeline.md`.
+- Keep this section mirrored across `AGENTS.md` and `CLAUDE.md` when release automation changes.
+
 ## Architecture
 
 ### Module Structure
@@ -44,19 +50,43 @@ SnapVet is an offline-first veterinary anesthesia monitoring app for iPad and An
 - **`server/`** — Ktor server application (JVM only). Depends on `shared`. Runs on Netty.
 - **`iosApp/`** — Native SwiftUI iOS application. Imports the `Shared` framework from the shared module. Contains its own parallel implementation of design system components in Swift.
 
+### Architecture Guidelines
+
+- **Naming**: All use case classes must end with `Usecase` (e.g., `StartCaseUsecase`). All repository interfaces/impls must end with `Repository` (e.g., `CaseRepository`, `CaseRepositoryImpl`).
+- **Package structure**: Keep clear vertical slices for future modularization.
+  - `com.snapvet.domain.model` — domain models and enums
+  - `com.snapvet.domain.usecase` — use cases (pure business logic)
+  - `com.snapvet.domain.util` — domain utilities (IDs, time)
+  - `com.snapvet.data.local` — database + mappers
+  - `com.snapvet.data.repository` — repository interfaces + implementations
+  - `com.snapvet.data.remote` — API interfaces and DTOs
+  - `com.snapvet.viewmodel` — shared ViewModels
+- **OOP + Clean code**: Apply SRP, DRY, interface segregation, and abstraction. Use constructor injection for dependencies. Keep business logic testable and side-effect-free where possible.
+- **Separation of concerns**: ViewModels orchestrate use cases; use cases call repositories; repositories handle data sources; mappers isolate DB/DTO conversions.
+- **Unidirectional data flow**: UI → ViewModel intents → use cases → repositories → state updates via `StateFlow`/`Flow`.
+- **Compose/Multiplatform best practices**: Keep UI stateless where possible, pass state down and events up, avoid side effects in composables, and use stable state holders. Keep platform UI specifics out of shared business logic.
+
+### Database Migration Guidelines (SQLDelight)
+
+- **No Room-style JSON auto-migrations**: SQLDelight uses explicit SQL migrations.
+- **Versioning**: Bump `sqldelight { databases { ... version = X } }` for each schema change.
+- **Migration files**: Add `shared/src/commonMain/sqldelight/com/snapvet/db/X.sqm` (e.g., `2.sqm`) with SQL to migrate from version `X-1` to `X`.
+- **Schema snapshots**: Run `./gradlew :shared:generateSqlDelightSchema` to update schema files in `shared/sqldelight/schema/`.
+- **Verification**: Keep `verifyMigrations = true` enabled so builds fail if migrations are missing or incorrect.
+
 ### Dual Design System (Compose + SwiftUI) — CRITICAL
 
 Because the project uses native UI (Compose for Android, SwiftUI for iOS) rather than full Compose Multiplatform UI, every design component exists twice and must stay synchronized. When modifying a component, always update both the Compose and SwiftUI versions together:
 
-| Compose (shared)                                    | SwiftUI (iosApp)                                     |
-|-----------------------------------------------------|------------------------------------------------------|
-| `com.snapvet.design.theme.SnapVetColors`            | `Color+Extension.swift` (Color extensions)           |
-| `com.snapvet.design.theme.SnapVetTypography`        | `Font+Extension.swift`                               |
-| `com.snapvet.design.theme.SnapVetTheme`             | N/A (SwiftUI uses color/font extensions directly)    |
-| `com.snapvet.design.theme.DarkColorScheme`          | N/A (maps SnapVetColors to Material3 dark scheme)    |
-| `com.snapvet.design.component.parameter.ParameterTile` | `ParameterTileView.swift`                        |
-| `com.snapvet.design.component.input.NumericKeypad`  | `NumericKeypadView.swift`                            |
-| `com.snapvet.design.ChipSelector`                   | `ChipSelectorView.swift`                             |
+| Compose (shared)                                         | SwiftUI (iosApp)                                  |
+|----------------------------------------------------------|---------------------------------------------------|
+| `com.snapvet.design.theme.SnapVetColors`                 | `Color+Extension.swift` (Color extensions)        |
+| `com.snapvet.design.theme.SnapVetTypography`             | `Font+Extension.swift`                            |
+| `com.snapvet.design.theme.SnapVetTheme`                  | N/A (SwiftUI uses color/font extensions directly) |
+| `com.snapvet.design.theme.DarkColorScheme`               | N/A (maps SnapVetColors to Material3 dark scheme) |
+| `com.snapvet.design.component.parameter.ParameterTile`   | `ParameterTileView.swift`                         |
+| `com.snapvet.design.component.input.NumericKeypad`       | `NumericKeypadView.swift`                         |
+| `com.snapvet.design.ChipSelector`                        | `ChipSelectorView.swift`                          |
 | `com.snapvet.design.component.parameter.ParameterStatus` | `ParameterStatus` enum in ParameterTileView.swift |
 
 Color values are defined in hex in `SnapVetColors` (Compose) and must match the RGB equivalents in `Color+Extension.swift` (SwiftUI). The prefix convention is `snapvet` for SwiftUI color extensions.

@@ -1,0 +1,48 @@
+package com.snapvet.data.local
+
+import com.snapvet.db.Cases
+import com.snapvet.db.Vital_records
+import com.snapvet.domain.model.CRTReading
+import com.snapvet.domain.model.Case
+import com.snapvet.domain.model.CaseStatus
+import com.snapvet.domain.model.ECGReading
+import com.snapvet.domain.model.MucousMembraneReading
+import com.snapvet.domain.model.Species
+import com.snapvet.domain.model.VitalRecord
+import kotlinx.datetime.Instant
+
+internal fun Cases.toDomain(): Case {
+    return Case(
+        id = id,
+        patientName = patient_name,
+        species = Species.valueOf(species),
+        weight = weight,
+        procedure = procedure,
+        anestheticProtocol = anesthetic_protocol,
+        startTime = Instant.fromEpochMilliseconds(start_time),
+        endTime = end_time?.let { Instant.fromEpochMilliseconds(it) },
+        status = CaseStatus.valueOf(status)
+    )
+}
+
+internal fun Vital_records.toDomain(): VitalRecord {
+    return VitalRecord(
+        id = id,
+        caseId = case_id,
+        timestamp = Instant.fromEpochMilliseconds(timestamp),
+        hr = hr?.toInt(),
+        rr = rr?.toInt(),
+        spo2 = spo2?.toInt(),
+        etco2 = etco2?.toInt(),
+        bpSys = bp_sys?.toInt(),
+        bpDia = bp_dia?.toInt(),
+        bpMap = bp_map?.toInt(),
+        temp = temp,
+        sevoIso = sevo_iso,
+        o2Flow = o2_flow,
+        ecg = ecg?.let { ECGReading.valueOf(it) },
+        crt = crt?.let { CRTReading.valueOf(it) },
+        mucousMembrane = mucous_membrane?.let { MucousMembraneReading.valueOf(it) },
+        notes = notes
+    )
+}
