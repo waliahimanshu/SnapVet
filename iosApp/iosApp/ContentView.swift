@@ -9,14 +9,19 @@ struct ContentView: View {
                 .tabItem { Label("Cases", systemImage: "list.bullet") }
                 .tag(AppTab.cases)
 
-            CaseSetupScreen(viewModel: appState.caseSetupWrapper) { caseId in
-                appState.startSession(caseId: caseId)
+            CaseSetupScreen(viewModel: appState.caseSetupWrapper) { createdCase in
+                appState.startSession(caseInfo: createdCase)
             }
             .tabItem { Label("Setup", systemImage: "plus.circle") }
             .tag(AppTab.setup)
 
             if let monitoring = appState.monitoringWrapper {
-                MonitoringScreen(viewModel: monitoring) {
+                MonitoringScreen(
+                    viewModel: monitoring,
+                    patientName: appState.activeCase?.patientName ?? "",
+                    species: appState.activeCase?.species.name ?? "",
+                    weight: appState.activeCase?.weight.description ?? ""
+                ) {
                     appState.endSession()
                 }
                     .tabItem { Label("Monitor", systemImage: "waveform.path.ecg") }

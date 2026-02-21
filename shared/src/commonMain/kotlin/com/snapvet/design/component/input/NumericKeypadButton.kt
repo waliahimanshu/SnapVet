@@ -65,10 +65,12 @@ fun NumericKeypadButton(
 @Composable
 fun NumericKeypad(
     currentValue: String = "",
+    unitLabel: String? = null,
     onNumberClick: (String) -> Unit = {},
     onDecimalClick: () -> Unit = {},
     onBackspaceClick: () -> Unit = {},
     onConfirm: () -> Unit = {},
+    onClear: () -> Unit = {},
     onCancel: () -> Unit = {}
 ) {
     Column(
@@ -89,12 +91,21 @@ fun NumericKeypad(
                 .padding(bottom = 8.dp),
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = currentValue.ifEmpty { "0" },
-                style = SnapVetTypography.displayLarge.copy(letterSpacing = (-1).sp),
-                color = SnapVetColors.AccentPrimary,
-                fontWeight = FontWeight.Bold
-            )
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = currentValue.ifEmpty { "0" },
+                    style = SnapVetTypography.displayLarge.copy(letterSpacing = (-1).sp),
+                    color = SnapVetColors.AccentPrimary,
+                    fontWeight = FontWeight.Bold
+                )
+                if (!unitLabel.isNullOrBlank()) {
+                    Text(
+                        text = unitLabel,
+                        style = SnapVetTypography.bodySmall,
+                        color = SnapVetColors.TextSecondary
+                    )
+                }
+            }
         }
 
         // Number buttons grid
@@ -155,6 +166,26 @@ fun NumericKeypad(
                 .height(52.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(SnapVetColors.AccentPrimary.copy(alpha = 0.2f))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = ripple(color = Color.White.copy(alpha = 0.1f)),
+                        onClick = onClear
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "Clear",
+                    color = SnapVetColors.AccentPrimary,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+
             Box(
                 modifier = Modifier
                     .weight(1f)
@@ -228,7 +259,8 @@ private fun NumericKeypadButtonAccentPreview() {
 private fun NumericKeypadPreview() {
     SnapVetTheme {
         NumericKeypad(
-            currentValue = "98.6"
+            currentValue = "98.6",
+            unitLabel = "°C"
         )
     }
 }

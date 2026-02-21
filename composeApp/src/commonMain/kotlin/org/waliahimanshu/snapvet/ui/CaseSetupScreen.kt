@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -19,18 +18,20 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.input.KeyboardOptions
+import com.snapvet.domain.model.Case
 import com.snapvet.domain.model.Species
 import com.snapvet.viewmodel.CaseSetupViewModel
 
 @Composable
 fun CaseSetupScreen(
     viewModel: CaseSetupViewModel,
-    onCaseCreated: (String) -> Unit
+    onCaseCreated: (Case) -> Unit
 ) {
     val state by viewModel.state.collectAsState()
 
     LaunchedEffect(state.createdCase?.id) {
-        state.createdCase?.id?.let(onCaseCreated)
+        state.createdCase?.let(onCaseCreated)
     }
 
     Column(
@@ -88,7 +89,7 @@ fun CaseSetupScreen(
             onClick = { viewModel.startCase() },
             enabled = state.patientName.isNotBlank() && state.species != null && state.weight != null
         ) {
-            Text("Start Case")
+            Text("Start Anesthesia")
         }
 
         state.errorMessage?.let { message ->

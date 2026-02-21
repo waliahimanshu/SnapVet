@@ -2,19 +2,15 @@ package org.waliahimanshu.snapvet.ui
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -25,8 +21,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.collectAsState
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -35,6 +31,8 @@ import com.snapvet.design.ChipSelector
 import com.snapvet.design.component.input.NumericKeypad
 import com.snapvet.design.component.parameter.ParameterStatus
 import com.snapvet.design.component.parameter.ParameterTile
+import com.snapvet.design.component.parameter.PatientInfoBar
+import com.snapvet.design.theme.SnapVetColors
 import com.snapvet.domain.model.CRTReading
 import com.snapvet.domain.model.ECGReading
 import com.snapvet.domain.model.MucousMembraneReading
@@ -67,56 +65,81 @@ private sealed class ActiveDialog {
 @Composable
 fun MonitoringScreen(
     viewModel: MonitoringViewModel,
+    patientName: String,
+    species: String,
+    weight: String,
     onEndSession: () -> Unit
 ) {
     val state by viewModel.state.collectAsState()
     var activeDialog by remember { mutableStateOf<ActiveDialog?>(null) }
 
-    BoxWithConstraints(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val columns = when {
             maxWidth < 600.dp -> 2
             maxWidth < 900.dp -> 3
             else -> 4
         }
 
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(columns),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                modifier = Modifier.weight(1f)
+        Column(modifier = Modifier.fillMaxSize()) {
+            PatientInfoBar(
+                patientName = patientName.ifBlank { "—" },
+                weight = weight.ifBlank { "—" },
+                species = species.ifBlank { "—" },
+                elapsedTime = formatElapsed(state.elapsedSeconds),
+                batteryLevel = 68,
+                showNudge = state.shouldNudgeSave
+            )
+
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                val tiles = buildTileItems(state.currentVitals, state.lastSaved)
-                items(tiles) { item ->
-                    ParameterTile(
-                        name = item.label,
-                        value = item.value,
-                        unit = item.unit,
-                        status = item.status,
-                        previousValue = item.previousValue,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        activeDialog = when (item.field) {
-                            VitalField.BP -> ActiveDialog.BloodPressure(
-                                sys = state.currentVitals.bpSys?.toString().orEmpty(),
-                                dia = state.currentVitals.bpDia?.toString().orEmpty(),
-                                map = state.currentVitals.bpMap?.toString().orEmpty()
-                            )
-                            VitalField.ECG, VitalField.CRT, VitalField.MM -> ActiveDialog.Chips(item.field)
-                            VitalField.NOTES -> ActiveDialog.Notes(state.currentVitals.notes.orEmpty())
-                            VitalField.TEMP, VitalField.SEVO, VitalField.O2 -> ActiveDialog.Numeric(item.field, true)
-                            else -> ActiveDialog.Numeric(item.field, false)
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(columns),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    val tiles = buildTileItems(state.currentVitals, state.lastSaved)
+                    items(tiles) { item ->
+                        ParameterTile(
+                            name = item.label,
+                            value = item.value,
+                            unit = item.unit,
+                            status = item.status,
+                            previousValue = item.previousValue,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            activeDialog = when (item.field) {
+                                VitalField.BP -> ActiveDialog.BloodPressure(
+                                    sys = state.currentVitals.bpSys?.toString().orEmpty(),
+                                    dia = state.currentVitals.bpDia?.toString().orEmpty(),
+                                    map = state.currentVitals.bpMap?.toString().orEmpty()
+                                )
+                                VitalField.ECG, VitalField.CRT, VitalField.MM -> ActiveDialog.Chips(item.field)
+                                VitalField.NOTES -> ActiveDialog.Notes(state.currentVitals.notes.orEmpty())
+                                VitalField.TEMP, VitalField.SEVO, VitalField.O2 -> ActiveDialog.Numeric(item.field, true)
+                                else -> ActiveDialog.Numeric(item.field, false)
+                            }
                         }
                     }
                 }
-            }
 
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Button(onClick = { viewModel.save() }) {
-                    Text("Save Entry")
-                }
-                OutlinedButton(onClick = onEndSession) {
-                    Text("End Anesthesia")
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    val saveText = if (state.isSaving) "Saving..." else "Save Entry"
+                    Button(onClick = { viewModel.save() }) {
+                        Text(saveText)
+                    }
+                    Text(
+                        text = state.secondsSinceLastSave?.let { "Saved ${formatElapsed(it)} ago" }
+                            ?: "Not saved yet",
+                        color = if (state.shouldNudgeSave) SnapVetColors.AccentWarning else SnapVetColors.TextSecondary
+                    )
+                    OutlinedButton(onClick = onEndSession) {
+                        Text("End Anesthesia")
+                    }
                 }
             }
         }
@@ -220,10 +243,12 @@ private fun NumericDialog(
             Text(text = field.label)
             NumericKeypad(
                 currentValue = value,
+                unitLabel = field.unit.takeIf { it.isNotBlank() },
                 onNumberClick = { value += it },
                 onDecimalClick = { if (allowDecimal && !value.contains(".")) value += "." },
                 onBackspaceClick = { if (value.isNotEmpty()) value = value.dropLast(1) },
                 onConfirm = { onConfirm(value) },
+                onClear = { value = "" },
                 onCancel = onDismiss
             )
         }
@@ -406,5 +431,17 @@ private fun applyChipSelection(current: VitalsInput, field: VitalField, selected
         VitalField.CRT -> current.copy(crt = selectedId?.let { CRTReading.valueOf(it) })
         VitalField.MM -> current.copy(mucousMembrane = selectedId?.let { MucousMembraneReading.valueOf(it) })
         else -> current
+    }
+}
+
+private fun formatElapsed(seconds: Long): String {
+    val minutes = (seconds / 60).toInt()
+    val remaining = (seconds % 60).toInt()
+    return if (minutes >= 60) {
+        val hours = minutes / 60
+        val mins = minutes % 60
+        "%d:%02d".format(hours, mins)
+    } else {
+        "%02d:%02d".format(minutes, remaining)
     }
 }
