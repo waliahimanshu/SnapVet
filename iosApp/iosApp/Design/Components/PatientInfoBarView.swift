@@ -45,7 +45,7 @@ struct PatientInfoBarView: View {
                 .foregroundColor(.snapvetTextPrimary)
 
             HStack(spacing: 12) {
-                Text("\(weight) kg")
+                Text("\(weight) lb")
                     .font(SnapVetFont.bodySmall)
                     .foregroundColor(.snapvetTextSecondary)
 

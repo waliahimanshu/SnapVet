@@ -51,4 +51,8 @@ class CaseRepositoryImpl(
     override suspend fun updateCaseStatus(id: String, status: CaseStatus, endTime: Instant?) {
         queries.updateCaseStatus(status = status.name, end_time = endTime?.toEpochMilliseconds(), id = id)
     }
+
+    override suspend fun deleteCase(id: String) {
+        queries.deleteCaseById(id = id)
+    }
 }

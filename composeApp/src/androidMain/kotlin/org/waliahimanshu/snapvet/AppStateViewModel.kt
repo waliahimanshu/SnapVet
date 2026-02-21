@@ -56,6 +56,7 @@ class AppStateViewModel(
             caseStartTimeMillis = case.startTime.toEpochMilliseconds(),
             saveVitalsUsecase = saveVitalsUsecase,
             getLatestVitalRecordUsecase = getLatestVitalRecordUsecase,
+            observeVitalRecordsUsecase = observeVitalRecordsUsecase,
             timeProvider = timeProvider,
             scope = viewModelScope
         )

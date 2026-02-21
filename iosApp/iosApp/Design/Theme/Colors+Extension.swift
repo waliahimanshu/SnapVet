@@ -1,26 +1,89 @@
 // SnapVet Design System - Colors
 import SwiftUI
+import UIKit
 
 extension Color {
+    private static func dynamic(
+        light: UIColor,
+        dark: UIColor
+    ) -> Color {
+        Color(
+            UIColor { traitCollection in
+                traitCollection.userInterfaceStyle == .dark ? dark : light
+            }
+        )
+    }
+
+    private static func rgb(
+        _ red: CGFloat,
+        _ green: CGFloat,
+        _ blue: CGFloat,
+        alpha: CGFloat = 1.0
+    ) -> UIColor {
+        UIColor(red: red / 255, green: green / 255, blue: blue / 255, alpha: alpha)
+    }
+
     // MARK: - Primary Backgrounds
-    static let snapvetPrimaryBg = Color(red: 0.173, green: 0.243, blue: 0.314) // #2C3E50
-    static let snapvetTileBg = Color(red: 0.204, green: 0.286, blue: 0.369) // #34495E
-    static let snapvetHeaderBg = Color(red: 0.102, green: 0.140, blue: 0.196) // #1A2332
+    static let snapvetPrimaryBg = dynamic(
+        light: rgb(244, 248, 255), // #F4F8FF
+        dark: rgb(18, 18, 18) // #121212
+    )
+    static let snapvetTileBg = dynamic(
+        light: rgb(255, 255, 255), // #FFFFFF
+        dark: rgb(30, 30, 30) // #1E1E1E
+    )
+    static let snapvetHeaderBg = dynamic(
+        light: rgb(233, 241, 255), // #E9F1FF
+        dark: rgb(24, 24, 24) // #181818
+    )
 
     // MARK: - Accents
-    static let snapvetAccentPrimary = Color(red: 0.153, green: 0.682, blue: 0.376) // #27AE60 (Medical Green)
-    static let snapvetAccentAlert = Color(red: 0.906, green: 0.298, blue: 0.235) // #E74C3C (Coral Red)
-    static let snapvetAccentWarning = Color(red: 0.953, green: 0.612, blue: 0.071) // #F39C12 (Warm Yellow)
-    static let snapvetAccentSuccess = Color(red: 0.118, green: 0.494, blue: 0.204) // #1E7E34
-    static let snapvetAccentError = Color(red: 0.635, green: 0.235, blue: 0.235) // #A23C3C
+    static let snapvetAccentPrimary = dynamic(
+        light: rgb(39, 174, 96), // #27AE60
+        dark: rgb(39, 174, 96) // #27AE60
+    )
+    static let snapvetAccentAlert = dynamic(
+        light: rgb(232, 33, 82), // #E82152
+        dark: rgb(232, 33, 82) // #E82152
+    )
+    static let snapvetAccentWarning = dynamic(
+        light: rgb(243, 157, 18), // #F39D12
+        dark: rgb(243, 157, 18) // #F39D12
+    )
+    static let snapvetAccentSuccess = dynamic(
+        light: rgb(4, 184, 74), // #04B84A
+        dark: rgb(4, 184, 74) // #04B84A
+    )
+    static let snapvetAccentError = dynamic(
+        light: rgb(186, 33, 66), // #BA2142
+        dark: rgb(186, 33, 66) // #BA2142
+    )
 
     // MARK: - Text
-    static let snapvetTextPrimary = Color(red: 1.0, green: 1.0, blue: 1.0) // #FFFFFF
-    static let snapvetTextSecondary = Color(red: 0.583, green: 0.647, blue: 0.659) // #95A5A6
-    static let snapvetTextTertiary = Color(red: 0.498, green: 0.549, blue: 0.553) // #7F8C8D
+    static let snapvetTextPrimary = dynamic(
+        light: rgb(16, 42, 76), // #102A4C
+        dark: rgb(242, 242, 242) // #F2F2F2
+    )
+    static let snapvetTextSecondary = dynamic(
+        light: rgb(61, 95, 141), // #3D5F8D
+        dark: rgb(176, 176, 176) // #B0B0B0
+    )
+    static let snapvetTextTertiary = dynamic(
+        light: rgb(101, 130, 168), // #6582A8
+        dark: rgb(138, 138, 138) // #8A8A8A
+    )
 
     // MARK: - Utility
-    static let snapvetBorderSubtle = Color(red: 0.243, green: 0.329, blue: 0.412) // #3E5369
-    static let snapvetDivider = Color(red: 0.176, green: 0.247, blue: 0.322) // #2D3F52
-    static let snapvetOverlay = Color.black.opacity(0.6)
+    static let snapvetBorderSubtle = dynamic(
+        light: rgb(196, 212, 238), // #C4D4EE
+        dark: rgb(42, 42, 42) // #2A2A2A
+    )
+    static let snapvetDivider = dynamic(
+        light: rgb(216, 227, 246), // #D8E3F6
+        dark: rgb(36, 36, 36) // #242424
+    )
+    static let snapvetOverlay = dynamic(
+        light: rgb(0, 0, 0, alpha: 0.35),
+        dark: rgb(0, 0, 0, alpha: 0.55)
+    )
 }

@@ -1,117 +1,114 @@
 import SwiftUI
+import Shared
 
 struct ContentView: View {
     @StateObject private var appState = AppState()
+    @AppStorage("snapvet_appearance_mode") private var appearanceModeRawValue = AppAppearance.dark.rawValue
 
     enum Route: Hashable {
         case caseSetup
         case monitoring
-        case sessionEnded
-        case activeRecords
+        case caseDetails(String)
+    }
+
+    enum AppAppearance: String {
+        case dark
+        case light
+
+        var colorScheme: ColorScheme {
+            switch self {
+            case .dark: return .dark
+            case .light: return .light
+            }
+        }
     }
 
     @State private var path: [Route] = []
 
     var body: some View {
         NavigationStack(path: $path) {
-            CaseListScreen(viewModel: appState.caseListWrapper) {
-                appState.prepareNewCase()
-                path.append(.caseSetup)
-            }
+            CaseListScreen(
+                viewModel: appState.caseListWrapper,
+                isDarkMode: currentAppearance == .dark,
+                onThemeToggle: toggleAppearance,
+                onNewCase: {
+                    appState.prepareNewCase()
+                    path.append(.caseSetup)
+                },
+                onCaseSelected: { selected in
+                    appState.openCaseDetails(caseInfo: selected)
+                    path.append(.caseDetails(selected.id))
+                }
+            )
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: Route.self) { route in
                 switch route {
                 case .caseSetup:
-                    CaseSetupScreen(viewModel: appState.caseSetupWrapper) { createdCase in
-                        appState.startSession(caseInfo: createdCase)
-                        path = [.monitoring]
-                    }
+                    CaseSetupScreen(
+                        viewModel: appState.caseSetupWrapper,
+                        onCaseCreated: { createdCase in
+                            appState.startSession(caseInfo: createdCase)
+                            path = [.monitoring]
+                        },
+                        onCancel: {
+                            path = []
+                        }
+                    )
+                    .toolbar(.visible, for: .navigationBar)
+
                 case .monitoring:
                     if let monitoring = appState.monitoringWrapper {
                         MonitoringScreen(
                             viewModel: monitoring,
                             patientName: appState.activeCase?.patientName ?? "",
                             species: appState.activeCase?.species.name ?? "",
-                            weight: appState.activeCase?.weight.description ?? ""
-                        ) {
-                            appState.endSession()
-                            path = [.sessionEnded]
-                        }
-                        .navigationBarBackButtonHidden(true)
-                    }
-                case .sessionEnded:
-                    SessionEndedScreen(
-                        patientName: appState.activeCase?.patientName ?? "This case",
-                        onBrowseCases: {
-                            appState.resetFlowToBrowse()
-                            path = []
-                        },
-                        onViewRecords: {
-                            if appState.recordTableWrapper != nil {
-                                path = [.activeRecords]
+                            weight: appState.activeCase?.weight.description ?? "",
+                            onDiscardSession: {
+                                Task {
+                                    await appState.discardActiveSession()
+                                    path = []
+                                }
+                            },
+                            onEndSession: {
+                                appState.endSession()
+                                path = []
                             }
-                        },
-                        onStartNewCase: {
-                            appState.prepareNewCase()
-                            path = [.caseSetup]
-                        }
-                    )
-                    .navigationBarBackButtonHidden(true)
-                case .activeRecords:
-                    if let records = appState.recordTableWrapper {
-                        RecordTableScreen(viewModel: records)
+                        )
+                        .toolbar(.visible, for: .navigationBar)
+                    }
+
+                case .caseDetails(let caseId):
+                    if
+                        let selectedCase = appState.selectedCase,
+                        selectedCase.id == caseId,
+                        let records = appState.selectedRecordTableWrapper
+                    {
+                        RecordTableScreen(
+                            viewModel: records,
+                            caseInfo: selectedCase,
+                            onDeleteCase: {
+                                Task {
+                                    await appState.deleteCase(caseId: selectedCase.id)
+                                    path = []
+                                }
+                            }
+                        )
+                        .toolbar(.visible, for: .navigationBar)
                     }
                 }
             }
         }
         .background(Color.snapvetPrimaryBg)
+        .tint(.snapvetAccentPrimary)
+        .preferredColorScheme(currentAppearance.colorScheme)
     }
-}
 
-private struct SessionEndedScreen: View {
-    let patientName: String
-    let onBrowseCases: () -> Void
-    let onViewRecords: () -> Void
-    let onStartNewCase: () -> Void
+    private var currentAppearance: AppAppearance {
+        AppAppearance(rawValue: appearanceModeRawValue) ?? .dark
+    }
 
-    var body: some View {
-        VStack(spacing: 20) {
-            Spacer()
-
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 72))
-                .foregroundColor(.snapvetAccentPrimary)
-
-            Text("Session Ended")
-                .font(SnapVetFont.titleLarge)
-                .foregroundColor(.snapvetTextPrimary)
-
-            Text("\(patientName) anesthesia has been completed.")
-                .font(SnapVetFont.bodyMedium)
-                .foregroundColor(.snapvetTextSecondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 24)
-
-            VStack(spacing: 12) {
-                Button("View Case Records", action: onViewRecords)
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
-
-                Button("Browse Cases", action: onBrowseCases)
-                    .buttonStyle(.bordered)
-                    .controlSize(.large)
-
-                Button("Start New Case", action: onStartNewCase)
-                    .buttonStyle(.bordered)
-                    .controlSize(.large)
-            }
-
-            Spacer()
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(24)
-        .background(Color.snapvetPrimaryBg)
-        .navigationTitle("Complete")
+    private func toggleAppearance() {
+        appearanceModeRawValue = currentAppearance == .dark ? AppAppearance.light.rawValue : AppAppearance.dark.rawValue
     }
 }
 

@@ -115,7 +115,7 @@ struct DesignSystemShowcaseView: View {
         VStack(alignment: .leading, spacing: 8) {
             sectionHeader("Numeric Keypad — Heart Rate")
             NumericKeypadView(
-                currentValue: keypadValue,
+                currentValue: $keypadValue,
                 onNumberTap: { num in keypadValue += num },
                 onDecimalTap: {
                     if !keypadValue.contains(".") { keypadValue += "." }

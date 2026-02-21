@@ -60,6 +60,9 @@ SELECT * FROM cases WHERE status = ? ORDER BY start_time DESC;
 updateCaseStatus:
 UPDATE cases SET status = ?, end_time = ? WHERE id = ?;
 
+deleteCaseById:
+DELETE FROM cases WHERE id = ?;
+
 insertVitalRecord:
 INSERT INTO vital_records(
     id,
@@ -86,3 +89,6 @@ SELECT * FROM vital_records WHERE case_id = ? ORDER BY timestamp DESC;
 
 selectLatestVitalRecordForCase:
 SELECT * FROM vital_records WHERE case_id = ? ORDER BY timestamp DESC LIMIT 1;
+
+deleteVitalRecordsForCase:
+DELETE FROM vital_records WHERE case_id = ?;

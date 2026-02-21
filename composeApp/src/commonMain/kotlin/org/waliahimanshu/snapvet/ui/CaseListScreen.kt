@@ -27,7 +27,7 @@ fun CaseListScreen(viewModel: CaseListViewModel) {
         items(state.cases) { item ->
             Column(modifier = Modifier.padding(8.dp)) {
                 Text(text = item.patientName)
-                Text(text = "${item.species.name} • ${item.weight} kg")
+                Text(text = "${item.species.name} • ${item.weight} lb")
                 Text(text = item.status.name)
             }
         }

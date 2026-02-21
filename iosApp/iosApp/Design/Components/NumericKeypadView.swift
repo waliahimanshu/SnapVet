@@ -2,7 +2,7 @@
 import SwiftUI
 
 struct NumericKeypadView: View {
-    @State var currentValue: String = ""
+    @Binding var currentValue: String
     var unitLabel: String? = nil
     var onNumberTap: (String) -> Void = { _ in }
     var onDecimalTap: () -> Void = {}
@@ -112,6 +112,14 @@ struct NumericKeypadButton: View {
     let isAccent: Bool
     let action: () -> Void
 
+    private var textColor: Color {
+        isAccent ? .white : .snapvetTextPrimary
+    }
+
+    private var borderColor: Color {
+        isAccent ? Color.white.opacity(0.22) : Color.snapvetBorderSubtle.opacity(0.8)
+    }
+
     var body: some View {
         Button(action: action) {
             Text(label)
@@ -120,10 +128,14 @@ struct NumericKeypadButton: View {
                 .frame(maxWidth: .infinity)
                 .frame(minHeight: 60)
                 .background(
-                    isAccent ? Color.snapvetAccentPrimary : Color.snapvetTileBg
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(isAccent ? Color.snapvetAccentPrimary : Color.snapvetTileBg)
                 )
-                .foregroundColor(.white)
-                .cornerRadius(8)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .stroke(borderColor, lineWidth: 1)
+                )
+                .foregroundColor(textColor)
         }
         .buttonStyle(PlainButtonStyle())
     }
@@ -133,7 +145,7 @@ struct NumericKeypadButton: View {
 
 #Preview("NumericKeypad") {
     NumericKeypadView(
-        currentValue: "125",
+        currentValue: .constant("125"),
         onConfirm: { print("Saved") }
     )
     .padding(16)
@@ -142,7 +154,7 @@ struct NumericKeypadButton: View {
 
 #Preview("NumericKeypad - Empty") {
     NumericKeypadView(
-        currentValue: "",
+        currentValue: .constant(""),
         onConfirm: { print("Saved") }
     )
     .padding(16)

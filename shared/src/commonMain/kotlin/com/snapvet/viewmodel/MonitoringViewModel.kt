@@ -2,7 +2,11 @@ package com.snapvet.viewmodel
 
 import com.snapvet.domain.model.VitalRecord
 import com.snapvet.domain.model.VitalsInput
+import com.snapvet.domain.model.CRTReading
+import com.snapvet.domain.model.ECGReading
+import com.snapvet.domain.model.MucousMembraneReading
 import com.snapvet.domain.usecase.GetLatestVitalRecordUsecase
+import com.snapvet.domain.usecase.ObserveVitalRecordsUsecase
 import com.snapvet.domain.usecase.SaveVitalsUsecase
 import com.snapvet.domain.util.TimeProvider
 import kotlinx.coroutines.CoroutineScope
@@ -18,6 +22,7 @@ class MonitoringViewModel(
     private val caseStartTimeMillis: Long,
     private val saveVitalsUsecase: SaveVitalsUsecase,
     private val getLatestVitalRecordUsecase: GetLatestVitalRecordUsecase,
+    private val observeVitalRecordsUsecase: ObserveVitalRecordsUsecase,
     private val timeProvider: TimeProvider,
     scope: CoroutineScope? = null
 ) : BaseViewModel(scope) {
@@ -27,11 +32,34 @@ class MonitoringViewModel(
 
     init {
         refreshLatest()
+        observeSavedRecords()
         startTicker()
     }
 
     fun updateVitals(input: VitalsInput) {
         _state.value = _state.value.copy(currentVitals = input)
+    }
+
+    fun updateEcg(name: String?) {
+        val ecg = name?.let { runCatching { ECGReading.valueOf(it) }.getOrNull() }
+        _state.value = _state.value.copy(currentVitals = _state.value.currentVitals.copy(ecg = ecg))
+    }
+
+    fun updateCrt(name: String?) {
+        val crt = name?.let { runCatching { CRTReading.valueOf(it) }.getOrNull() }
+        _state.value = _state.value.copy(currentVitals = _state.value.currentVitals.copy(crt = crt))
+    }
+
+    fun updateMucousMembrane(name: String?) {
+        val mucousMembrane = name?.let { runCatching { MucousMembraneReading.valueOf(it) }.getOrNull() }
+        _state.value = _state.value.copy(
+            currentVitals = _state.value.currentVitals.copy(mucousMembrane = mucousMembrane)
+        )
+    }
+
+    fun updateNotes(value: String?) {
+        val normalized = value?.trim()?.takeIf { it.isNotBlank() }
+        _state.value = _state.value.copy(currentVitals = _state.value.currentVitals.copy(notes = normalized))
     }
 
     fun save() {
@@ -60,6 +88,14 @@ class MonitoringViewModel(
         scope.launch {
             val latest = getLatestVitalRecordUsecase(caseId)
             _state.value = _state.value.copy(lastSaved = latest)
+        }
+    }
+
+    private fun observeSavedRecords() {
+        scope.launch {
+            observeVitalRecordsUsecase(caseId).collect { records ->
+                _state.value = _state.value.copy(recentRecords = records.take(5))
+            }
         }
     }
 
@@ -98,6 +134,7 @@ data class MonitoringState(
         notes = null
     ),
     val lastSaved: VitalRecord? = null,
+    val recentRecords: List<VitalRecord> = emptyList(),
     val isSaving: Boolean = false,
     val errorMessage: String? = null,
     val elapsedSeconds: Long = 0L,

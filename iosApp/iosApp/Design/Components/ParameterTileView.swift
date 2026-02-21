@@ -20,9 +20,9 @@ struct ParameterTileView: View {
         case .normal:
             return Color.snapvetBorderSubtle
         case .warning:
-            return Color.snapvetAccentWarning.opacity(0.6)
+            return Color.snapvetAccentWarning.opacity(0.8)
         case .alert:
-            return Color.snapvetAccentAlert.opacity(0.6)
+            return Color.snapvetAccentAlert.opacity(0.8)
         }
     }
 
@@ -38,55 +38,63 @@ struct ParameterTileView: View {
     }
 
     private var shouldShowPreviousValue: Bool {
-        guard let prev = previousValue else { return false }
-        return prev != value
+        guard let previousValue else { return false }
+        return previousValue != value
     }
 
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 8) {
-                // Parameter name + previous value
-                HStack {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .firstTextBaseline) {
                     Text(name)
-                        .font(SnapVetFont.bodyMedium)
-                        .fontWeight(.medium)
+                        .font(SnapVetFont.titleMedium)
                         .foregroundColor(.snapvetTextSecondary)
 
                     Spacer()
 
-                    if shouldShowPreviousValue, let prev = previousValue {
-                        Text(prev)
+                    if shouldShowPreviousValue, let previousValue {
+                        Text(previousValue)
                             .font(SnapVetFont.bodySmall)
                             .foregroundColor(.snapvetTextTertiary)
                     }
                 }
 
-                // Value with unit
-                HStack(alignment: .lastTextBaseline, spacing: 4) {
+                HStack(alignment: .bottom, spacing: 10) {
                     Text(value)
-                        .font(SnapVetFont.displayLarge.weight(.bold))
-                        .tracking(-0.5)
+                        .font(SnapVetFont.displayMedium.weight(.bold))
                         .foregroundColor(valueColor)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .fill(Color.snapvetHeaderBg.opacity(0.45))
+                        )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .stroke(Color.snapvetBorderSubtle, lineWidth: 1)
+                        )
 
                     if !unit.isEmpty {
                         Text(unit)
-                            .font(SnapVetFont.bodySmall)
-                            .fontWeight(.medium)
+                            .font(SnapVetFont.titleMedium)
                             .foregroundColor(.snapvetTextSecondary)
+                            .padding(.bottom, 12)
                     }
                 }
             }
             .frame(maxWidth: .infinity)
-            .frame(minHeight: 140)
-            .background(Color.snapvetTileBg)
-            .cornerRadius(12)
+            .padding(14)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Color.snapvetTileBg.opacity(0.72))
+            )
             .overlay(
-                RoundedRectangle(cornerRadius: 12)
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .stroke(borderColor, lineWidth: 1)
             )
-            .shadow(radius: 4)
         }
-        .buttonStyle(PlainButtonStyle())
+        .buttonStyle(.plain)
     }
 }
 
@@ -116,40 +124,11 @@ struct ParameterTileView: View {
 
 #Preview("ParameterTile - Alert") {
     ParameterTileView(
-        name: "BP Systolic",
-        value: "75",
+        name: "Systolic BP",
+        value: "72",
         unit: "mmHg",
         status: .alert
     )
-    .padding(16)
-    .background(Color.snapvetPrimaryBg)
-}
-
-#Preview("ParameterTile - With Previous Value") {
-    VStack(spacing: 16) {
-        ParameterTileView(
-            name: "Heart Rate",
-            value: "88",
-            unit: "bpm",
-            status: .normal,
-            previousValue: "85"
-        )
-        ParameterTileView(
-            name: "Temp",
-            value: "37.8",
-            unit: "°C",
-            status: .warning,
-            previousValue: "38.1"
-        )
-        // Same value — previous should NOT show
-        ParameterTileView(
-            name: "SpO₂",
-            value: "98",
-            unit: "%",
-            status: .normal,
-            previousValue: "98"
-        )
-    }
     .padding(16)
     .background(Color.snapvetPrimaryBg)
 }

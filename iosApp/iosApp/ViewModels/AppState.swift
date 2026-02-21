@@ -6,25 +6,29 @@ final class AppState: ObservableObject {
     @Published var activeCaseId: String? = nil
     @Published var activeCase: Case? = nil
 
+    @Published var selectedCase: Case? = nil
+    @Published var selectedRecordTableWrapper: RecordTableViewModelWrapper? = nil
+
     let provider: RepositoryProvider
     private let endAnesthesiaUsecase: EndAnesthesiaUsecase
+    private let deleteCaseUsecase: DeleteCaseUsecase
 
     let caseListWrapper: CaseListViewModelWrapper
     let caseSetupWrapper: CaseSetupViewModelWrapper
     @Published var monitoringWrapper: MonitoringViewModelWrapper?
-    @Published var recordTableWrapper: RecordTableViewModelWrapper?
 
     init() {
-        // Swap here: InMemoryRepositoryProvider() or SqlDelightRepositoryProvider
-        // For SQLDelight:
-        // let driverFactory = DatabaseDriverFactory()
-        // let database = DatabaseFactory(driverFactory: driverFactory).create()
-        // let provider = SqlDelightRepositoryProvider(database: database)
-        let provider = InMemoryRepositoryProvider()
+        let driverFactory = DatabaseDriverFactory()
+        let database = DatabaseFactory(driverFactory: driverFactory).create()
+        let provider = SqlDelightRepositoryProvider(database: database)
         self.provider = provider
         self.endAnesthesiaUsecase = EndAnesthesiaUsecase(
             caseRepository: provider.caseRepository(),
             timeProvider: SystemTimeProvider()
+        )
+        self.deleteCaseUsecase = DeleteCaseUsecase(
+            caseRepository: provider.caseRepository(),
+            vitalRecordRepository: provider.vitalRecordRepository()
         )
 
         self.caseListWrapper = CaseListViewModelWrapper(
@@ -48,8 +52,9 @@ final class AppState: ObservableObject {
     func prepareNewCase() {
         activeCaseId = nil
         activeCase = nil
+        selectedCase = nil
         monitoringWrapper = nil
-        recordTableWrapper = nil
+        selectedRecordTableWrapper = nil
     }
 
     func startSession(caseInfo: Case) {
@@ -67,11 +72,18 @@ final class AppState: ObservableObject {
                 getLatestVitalRecordUsecase: GetLatestVitalRecordUsecase(
                     vitalRecordRepository: provider.vitalRecordRepository()
                 ),
+                observeVitalRecordsUsecase: ObserveVitalRecordsUsecase(
+                    vitalRecordRepository: provider.vitalRecordRepository()
+                ),
                 timeProvider: SystemTimeProvider(),
                 scope: nil
             )
         )
-        recordTableWrapper = RecordTableViewModelWrapper(
+    }
+
+    func openCaseDetails(caseInfo: Case) {
+        selectedCase = caseInfo
+        selectedRecordTableWrapper = RecordTableViewModelWrapper(
             viewModel: RecordTableViewModel(
                 caseId: caseInfo.id,
                 observeVitalRecordsUsecase: ObserveVitalRecordsUsecase(
@@ -83,14 +95,28 @@ final class AppState: ObservableObject {
     }
 
     func endSession() {
-        if let caseId = activeCaseId {
-            Task {
-                _ = try? await endAnesthesiaUsecase.invoke(caseId: caseId)
-            }
+        guard let caseId = activeCaseId else { return }
+        Task {
+            _ = try? await endAnesthesiaUsecase.invoke(caseId: caseId)
         }
     }
 
-    func resetFlowToBrowse() {
-        prepareNewCase()
+    func discardActiveSession() async {
+        guard let caseId = activeCaseId else { return }
+        await deleteCase(caseId: caseId)
+    }
+
+    func deleteCase(caseId: String) async {
+        _ = try? await deleteCaseUsecase.invoke(caseId: caseId)
+
+        if activeCaseId == caseId {
+            activeCaseId = nil
+            activeCase = nil
+            monitoringWrapper = nil
+        }
+        if selectedCase?.id == caseId {
+            selectedCase = nil
+            selectedRecordTableWrapper = nil
+        }
     }
 }

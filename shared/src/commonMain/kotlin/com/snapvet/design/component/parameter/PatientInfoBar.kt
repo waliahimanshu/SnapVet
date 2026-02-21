@@ -39,7 +39,7 @@ fun PatientInfoBar(
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(text = patientName, style = SnapVetTypography.titleLarge, color = SnapVetColors.TextPrimary)
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(text = "$weight kg", style = SnapVetTypography.bodySmall, color = SnapVetColors.TextSecondary)
+                    Text(text = "$weight lb", style = SnapVetTypography.bodySmall, color = SnapVetColors.TextSecondary)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(text = species, style = SnapVetTypography.bodySmall, color = SnapVetColors.TextSecondary)
                 }

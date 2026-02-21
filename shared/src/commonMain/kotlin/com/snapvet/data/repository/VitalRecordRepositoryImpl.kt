@@ -48,4 +48,8 @@ class VitalRecordRepositoryImpl(
             .mapToList(dispatcher)
             .map { rows -> rows.map { it.toDomain() } }
     }
+
+    override suspend fun deleteRecordsForCase(caseId: String) {
+        queries.deleteVitalRecordsForCase(case_id = caseId)
+    }
 }
