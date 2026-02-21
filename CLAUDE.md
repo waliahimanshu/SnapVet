@@ -87,13 +87,27 @@ The README describes the target architecture for MVP1:
 - Always dark theme — `SnapVetTheme` ignores light/dark toggle and always uses `DarkColorScheme`
 - Compose Hot Reload plugin is enabled for the composeApp module
 
+## Save Mechanism — Manual Save Button (IMPORTANT)
+
+The save flow has two distinct steps:
+1. **Tile-level edit:** Vet taps a tile → keypad/slider/chip selector opens → enters value → taps **Save on the keypad** → this only updates the on-screen working copy (no database write)
+2. **Row-level commit:** Vet taps the **"Save" button** in the bottom bar → ALL current tile values are committed as one timestamped `VitalRecord` row
+
+Each tile shows the **previous saved value greyed out** (top-right corner, `TextTertiary` color) so the vet can see what changed since the last commit. The previous value is only shown when it differs from the current working value.
+
+Tile values are "sticky" — once entered, they persist on screen until manually changed. Unchanged values carry forward into each new record. This means every saved row has ALL 12+ parameter values, not just the ones that changed.
+
+The bottom bar shows: **Save button** (green, prominent) + **save status** ("Saved 2m ago") + **"End Anesthesia"** button. A 5-minute nudge highlights the Save button and/or tile borders when it's time to record.
+
 ## Design Conventions
 
 - Touch targets: minimum 44x44pt (iOS) / 48x48dp (Android) — optimized for gloved hands
 - Landscape-first tablet layout; grid adapts per device size (4x3 iPad, 2x6 smaller tablets)
 - Parameter tiles use `ParameterStatus` (NORMAL/WARNING/ALERT) to drive border and value colors
 - Numeric input uses a custom `NumericKeypad` component (not system keyboard)
+- Bounded numeric values (e.g., SpO₂ 80-100) should also offer slider input (TODO: not yet implemented)
 - Non-numeric parameters (ECG, CRT, Mucous Membrane) use `ChipSelector`
+- Notes tile supports free text input OR quick tags
 
 ## Preview Convention
 

@@ -129,14 +129,42 @@ focus on speed, reliability, and ease of use on tablets and mobile.
 
 ### Core Philosophy
 
+> **Make anesthetic monitoring fast, tap-based, and interruption-proof, then automatically turn entries into a clean table.**
+>
+> **No typing. No scrolling spreadsheets. Just tap → save → done.**
+
 - **Offline-first**: Works perfectly without internet
-- **Fast data entry**: Optimized for quick taps during surgery
+- **Fast data entry**: Optimized for quick taps during surgery — gloved hands, no keyboard
 - **Crash-proof**: Every save persists immediately to local database
-- **Native feel**: Platform-specific UI for best user experience
+- **Native feel**: Platform-specific UI for best user experience (Compose for Android, SwiftUI for iOS)
+- **Zero friction**: Tap tiles to update values, then one Save button commits the full row
 
 ---
 
-## 🎯 Key Decisions & Requirements
+## 🎯 Core Requirements (from Product Owner)
+
+### The Golden Rule: Tap → Edit → Save Row
+
+Each parameter tile is a quick edit interaction, and a manual **Save button** commits the full row:
+1. **Tap** a parameter tile (e.g., HR)
+2. Keypad/slider/chip selector appears
+3. Enter the value → tap **Save** on the keypad → updates the on-screen working copy only
+4. Repeat for other tiles as needed
+5. Tap the **Save button** in the bottom bar → ALL current tile values are committed as one timestamped `VitalRecord` row
+
+Each tile shows the **previous saved value greyed out** (top-right corner) so the vet can see what changed since the last commit. This gives full control — wrong values can be corrected before saving.
+
+### How Manual Save Works
+
+```
+05:00 — Vet taps HR → enters 88 → keypad Save    ← updates on-screen value only
+05:01 — Vet taps RR → enters 14 → keypad Save    ← updates on-screen value only
+05:02 — Vet taps SpO₂ → enters 97 → keypad Save  ← updates on-screen value only
+05:03 — Vet reviews tiles, sees previous values greyed out (HR was 85, now 88)
+05:03 — Vet taps SAVE BUTTON in bottom bar        ← one row written to DB with ALL current tile values + timestamp
+```
+
+Result: **one clean row per save**, fully reviewed before commit.
 
 ### Critical Behaviors (MVP1)
 
@@ -149,16 +177,27 @@ focus on speed, reliability, and ease of use on tablets and mobile.
 
 2. **Data Recording:**
 
-- Recording trigger: User taps "Save Entry" whenever ready (ideally every 5 minutes)
+- Recording trigger: Manual **Save button** in bottom bar — vet reviews on-screen values, then taps Save to commit one timestamped row
 - What gets saved: ALL parameter values (every tile) + auto-timestamp
-- 5-minute nudge: Visual reminder only (header/tile color change), no audio
-- Missed intervals: Just save when you can - no backfill option, no retroactive editing
+- Tile values are "sticky" — once entered, they persist on screen until changed
+- Each tile shows the **previous saved value greyed out** (top-right) so the vet can see what changed
+- 5-minute nudge: Visual reminder to save (Save button and/or tile borders highlight), no audio
+- Missed intervals: Just save when you can — no backfill option
+- Retroactive editing of old time slots: Optional nice-to-have, OK to skip in MVP1
 
-3. **UI Priorities:**
+3. **Input Methods:**
 
-- Monitoring screen is THE core experience
-- PDF export is need along with the table view screen
-- Optimized for gloved hands on tablets
+- **Numeric tiles** (HR, RR, SpO₂, EtCO₂, BP, Temp, Sevo%, O₂ Flow): Tap → numeric keypad overlay
+- **Bounded numeric tiles** (SpO₂ 80-100): Also offer slider input as alternative to keypad (TODO: not yet implemented)
+- **Non-numeric tiles** (ECG, CRT, Mucous Membrane): Tap → chip selector
+- **Notes tile**: Tap → free text input OR quick tags ("Patient stable", "Dose adjusted")
+- **BP tile**: Special — shows SYS/DIA/MAP, user fills what they have
+
+4. **UI Priorities:**
+
+- Monitoring screen is THE core experience (where vet spends 90% of time)
+- PDF export is the priority output (more important than on-screen table)
+- Optimized for gloved hands on tablets — minimum 44pt/48dp touch targets
 - ✅ Dogs & Cats only but could be extended for other species
 
 
@@ -321,35 +360,37 @@ Header Bar:           #1A2332 (Darker Blue)
 | **EtCO₂**<br>38   | **Temp**<br>99.1°  | **Sevo%**<br>2.0               | **O₂ Flow**<br>1.5 L/min |
 | **ECG**<br>🌊 NSR | **CRT**<br>< 2 sec | **Mucous Membrane**<br>🔴 Pink | **Notes**                |
 
-**Tile Behaviors:**
+**Tile Behaviors (tap → save → done):**
 
 - **Numeric tiles** (HR, RR, SpO₂, EtCO₂, Temp, Sevo%, O₂ Flow):
-    - Tap → numeric keypad overlay slides in
-    - Shows current value at top
-    - Large buttons (1-9, 0, backspace)
-    - "Clear" button (blue) clears input
-    - "Save" button (green) saves value to tile, closes overlay
+    - Tap → numeric keypad overlay slides in from right (iPad) or bottom (phone)
+    - Shows current value at top in large font
+    - Large buttons (1-9, 0, backspace) — glove-friendly
+    - "Clear" button clears input
+    - "Save" button (green) → saves value to on-screen working copy, closes overlay
+- **Bounded numeric tiles** (e.g., SpO₂ 80-100):
+    - Also offer slider input as alternative to keypad (TODO)
 - **BP tile**: Shows three values (SYS/DIA/MAP) - tap opens keypad for each field
+    - User fills what they have (partial entry OK — e.g., SYS and DIA only)
 - **ECG tile**: Shows waveform graphic + text label (NSR, Sinus Brady, etc.)
     - Tap → chip selector with rhythm options
 - **CRT tile**: Shows current value (< 2 sec or > 2 sec)
     - Tap → 2-option chip selector
-- **Mucous Membrane tile**: Shows color-coded chip (Pink, Pale, Blue, etc.)
+- **Mucous Membrane tile**: Shows color-coded chip (Pink, Pale, Blue, Grey, Muddy)
     - Tap → color chip selector
-- **Notes tile**: Tap → opens text input for free-form notes
+- **Notes tile**: Tap → free text input or quick tags
 
-**Bottom Actions:**
+**Bottom Bar:**
 
-- **"Save Entry" button** (not shown in mockup but mentioned in requirements)
-    - Captures all current tile values → timestamp → saves to database
-- **"End Anesthesia" button** (not shown but required)
-    - Stops timer → marks case as completed → navigate to record table
+- **"Save" button** (green, prominent) — commits ALL current tile values as one timestamped row
+- **Save status** — subtle text/icon showing "Saved 2m ago"
+- **"End Anesthesia" button** — stops timer, marks case as completed, navigates to record table
 
 **5-Minute Nudge:**
 
 - When 5 minutes elapsed since last save:
-    - Header bar changes color (subtle orange/yellow glow) OR
-    - Tile borders pulse with color
+    - Save button gets warning border (orange/yellow glow) to draw attention
+    - Header bar and/or tile borders may also change color
     - No audio alarm
 
 ---
@@ -405,8 +446,9 @@ persistence.
     - Mucous Membrane: Pink, Pale, Blue, Grey, Muddy (color-coded chips)
 - ✅ BP tile shows all three fields (SYS/DIA/MAP) - user fills what they have
 - ✅ 5-minute visual nudge (header bar or tile border color change, NO sound)
-- ✅ "Save Entry" button → timestamped snapshot of ALL current values
+- ✅ Manual Save button — commits ALL current tile values as one timestamped row; tiles show previous saved value greyed out
 - ✅ Missed intervals: no backfill option, just save when you can (notation optional)
+- ✅ Retroactive editing of old time slots: optional nice-to-have, OK to skip
 - ✅ "End Anesthesia" button → closes case, stops timer
 - ✅ Case history browsing (patient name, date, species)
 - ✅ On-screen record table view (nice-to-have)
@@ -423,11 +465,13 @@ persistence.
 
 - **Session Length**: Variable (20 minutes to 2+ hours, determined by surgery duration)
 - **Timer**: Starts when user taps "Start Anesthesia", runs continuously until "End Anesthesia"
-- **Recording Frequency**: User taps "Save Entry" whenever ready (ideally every 5 minutes)
-- **5-Minute Nudge**: Visual reminder to save (header/tile color change), but not enforced
-- **All Parameters Every Save**: Yes - every "Save Entry" captures all current tile values
+- **Recording Flow**: Vet taps tiles to enter/update on-screen values → reviews changes (previous value shown greyed out) → taps Save button → ALL current values committed as one timestamped row
+- **Recording Frequency**: Ideally every 5 minutes, but not enforced — vet saves whenever ready
+- **5-Minute Nudge**: Visual reminder to save (Save button gets warning glow, header/tile color change), but not enforced
+- **Sticky Tile Values**: Once a value is entered in a tile, it persists on screen until manually changed. Unchanged values carry forward into each new record
+- **All Parameters Every Save**: Yes — every save captures all current tile values (changed + unchanged)
 - **No Pause/Resume**: Once started, timer runs until case ends
-- **No Backfill**: If you miss the 5-minute mark, just save at 7 minutes - no retroactive entry
+- **No Backfill**: If you miss the 5-minute mark, just save at 7 minutes — no retroactive entry (optional nice-to-have for later)
 
 ### Data Model
 
@@ -445,7 +489,7 @@ data class Case(
     val status: CaseStatus        // ACTIVE, COMPLETED
 )
 
-// VitalRecord - One row per "Save Entry"
+// VitalRecord - One row per manual save
 data class VitalRecord(
     val id: String,               // UUID
     val caseId: String,           // FK to Case
@@ -1419,24 +1463,37 @@ Built with ❤️ for veterinary professionals who save lives every day.
 
 ## 📎 Appendix
 
-### Original Requirements Document
+### Original Requirements (from Product Owner — Sudhir, Feb 2026)
 
-This README is based on the original planning document which specified:
+**Core goal:** "Make anesthetic monitoring fast, tap-based, and interruption-proof, then automatically turn entries into a clean table. No typing. No scrolling spreadsheets. Just tap → save → done."
 
+**Key requirements:**
 - Single user, single device, no login (MVP1)
 - Dogs and cats only (exotics in MVP2)
 - All parameters recorded every save (no sparse entries)
 - Session starts with "Start Anesthesia," ends with "End Anesthesia" button
 - No pause/resume functionality
-- No backfill for missed intervals
-- Save = snapshot all current values with auto-timestamp
+- No backfill for missed intervals (notation OK, but no retroactive editing — optional nice-to-have)
+- Tap tile → enter value → keypad Save updates on-screen value → Save button in bottom bar commits all values as one timestamped row
 - 5-minute visual nudge (color change, no sound for MVP1)
+- Numeric input via keypad; bounded values (SpO₂) can also use slider (TODO)
 - Non-numeric params use quick-tap chip selectors
-- BP shows all three fields (SYS/DIA/MAP)
+- BP shows all three fields (SYS/DIA/MAP) — partial entry OK
+- Notes: free text OR quick tags
 - No drug logging in MVP1 (moved to MVP2)
 - Output: on-screen table view + PDF export (PDF is priority)
 - Cases saved locally, browsable by patient name and date
 - One active case at a time
+
+**Clarifications from Sudhir:**
+- Session duration: "never know — some surgeries are 20 minutes, some may be 2 hours"
+- Recording frequency: "ideally every 5 minutes but for app purposes save current values against timestamp"
+- Every parameter recorded every time: "Yes every parameter every time"
+- Pause/resume: "No"
+- Backfill: "make a separate notation, but no option for backfill"
+- Retroactive editing: "Optional, I am ok if it can but totally ok if we can't"
+- Tiles: "tiles can be fixed… usually parameters are fixed"
+- Table screen: "will be nice but pdf output will be more important and relevant!"
 
 ### Mockup Screens
 

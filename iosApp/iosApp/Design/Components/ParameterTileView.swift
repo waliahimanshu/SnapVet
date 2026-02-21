@@ -12,6 +12,7 @@ struct ParameterTileView: View {
     let value: String
     let unit: String
     let status: ParameterStatus
+    var previousValue: String? = nil
     var action: () -> Void = {}
 
     private var borderColor: Color {
@@ -36,14 +37,29 @@ struct ParameterTileView: View {
         }
     }
 
+    private var shouldShowPreviousValue: Bool {
+        guard let prev = previousValue else { return false }
+        return prev != value
+    }
+
     var body: some View {
         Button(action: action) {
             VStack(spacing: 8) {
-                // Parameter name
-                Text(name)
-                    .font(SnapVetFont.bodyMedium)
-                    .fontWeight(.medium)
-                    .foregroundColor(.snapvetTextSecondary)
+                // Parameter name + previous value
+                HStack {
+                    Text(name)
+                        .font(SnapVetFont.bodyMedium)
+                        .fontWeight(.medium)
+                        .foregroundColor(.snapvetTextSecondary)
+
+                    Spacer()
+
+                    if shouldShowPreviousValue, let prev = previousValue {
+                        Text(prev)
+                            .font(SnapVetFont.bodySmall)
+                            .foregroundColor(.snapvetTextTertiary)
+                    }
+                }
 
                 // Value with unit
                 HStack(alignment: .lastTextBaseline, spacing: 4) {
@@ -105,6 +121,35 @@ struct ParameterTileView: View {
         unit: "mmHg",
         status: .alert
     )
+    .padding(16)
+    .background(Color.snapvetPrimaryBg)
+}
+
+#Preview("ParameterTile - With Previous Value") {
+    VStack(spacing: 16) {
+        ParameterTileView(
+            name: "Heart Rate",
+            value: "88",
+            unit: "bpm",
+            status: .normal,
+            previousValue: "85"
+        )
+        ParameterTileView(
+            name: "Temp",
+            value: "37.8",
+            unit: "°C",
+            status: .warning,
+            previousValue: "38.1"
+        )
+        // Same value — previous should NOT show
+        ParameterTileView(
+            name: "SpO₂",
+            value: "98",
+            unit: "%",
+            status: .normal,
+            previousValue: "98"
+        )
+    }
     .padding(16)
     .background(Color.snapvetPrimaryBg)
 }

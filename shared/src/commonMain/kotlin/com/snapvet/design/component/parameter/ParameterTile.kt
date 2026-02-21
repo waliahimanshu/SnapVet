@@ -34,6 +34,7 @@ fun ParameterTile(
     value: String,
     unit: String = "",
     status: ParameterStatus = ParameterStatus.NORMAL,
+    previousValue: String? = null,
     modifier: Modifier = Modifier,
     onClick: () -> Unit = {}
 ) {
@@ -73,13 +74,27 @@ fun ParameterTile(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Parameter name
-            Text(
-                text = name,
-                style = SnapVetTypography.bodyMedium,
-                color = SnapVetColors.TextSecondary,
-                fontWeight = FontWeight.Medium
-            )
+            // Parameter name + previous value
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = name,
+                    style = SnapVetTypography.bodyMedium,
+                    color = SnapVetColors.TextSecondary,
+                    fontWeight = FontWeight.Medium
+                )
+
+                if (previousValue != null && previousValue != value) {
+                    Text(
+                        text = previousValue,
+                        style = SnapVetTypography.bodySmall,
+                        color = SnapVetColors.TextTertiary
+                    )
+                }
+            }
 
             // Value
             Row(
@@ -187,6 +202,40 @@ private fun ParameterTileNoUnitPreview() {
             value = "25",
             status = ParameterStatus.NORMAL
         )
+    }
+}
+
+@Preview(name = "Parameter Tile - With Previous Value", showBackground = true)
+@Composable
+private fun ParameterTileWithPreviousValuePreview() {
+    SnapVetTheme {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            ParameterTile(
+                name = "Heart Rate",
+                value = "88",
+                unit = "bpm",
+                status = ParameterStatus.NORMAL,
+                previousValue = "85"
+            )
+            ParameterTile(
+                name = "Temp",
+                value = "37.8",
+                unit = "°C",
+                status = ParameterStatus.WARNING,
+                previousValue = "38.1"
+            )
+            // Same value — previous should NOT show
+            ParameterTile(
+                name = "SpO₂",
+                value = "98",
+                unit = "%",
+                status = ParameterStatus.NORMAL,
+                previousValue = "98"
+            )
+        }
     }
 }
 
