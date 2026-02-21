@@ -21,6 +21,8 @@ import com.snapvet.design.theme.SnapVetColors
 import com.snapvet.design.theme.SnapVetTheme
 import com.snapvet.viewmodel.CaseListViewModel
 import com.snapvet.viewmodel.CaseSetupViewModel
+import com.snapvet.domain.model.Case
+import com.snapvet.domain.util.SystemTimeProvider
 import com.snapvet.viewmodel.MonitoringViewModel
 import com.snapvet.viewmodel.RecordTableViewModel
 import org.waliahimanshu.snapvet.ui.CaseListScreen
@@ -44,24 +46,26 @@ fun App(provider: RepositoryProvider) {
             )
         }
 
-        var activeCaseId by remember { mutableStateOf<String?>(null) }
+        var activeCase by remember { mutableStateOf<Case?>(null) }
         var selectedTab by remember { mutableStateOf(AppTab.Setup) }
 
-        val monitoringViewModel = remember(activeCaseId, provider) {
-            activeCaseId?.let {
+        val monitoringViewModel = remember(activeCase, provider) {
+            activeCase?.let { case ->
                 MonitoringViewModel(
-                    caseId = it,
+                    caseId = case.id,
+                    caseStartTimeMillis = case.startTime.toEpochMilliseconds(),
                     saveVitalsUsecase = provider.saveVitalsUsecase(),
                     getLatestVitalRecordUsecase = provider.getLatestVitalRecordUsecase(),
+                    timeProvider = SystemTimeProvider(),
                     scope = null
                 )
             }
         }
 
-        val recordTableViewModel = remember(activeCaseId, provider) {
-            activeCaseId?.let {
+        val recordTableViewModel = remember(activeCase, provider) {
+            activeCase?.let { case ->
                 RecordTableViewModel(
-                    caseId = it,
+                    caseId = case.id,
                     observeVitalRecordsUsecase = provider.observeVitalRecordsUsecase(),
                     scope = null
                 )
@@ -101,14 +105,17 @@ fun App(provider: RepositoryProvider) {
                     AppTab.Cases -> CaseListScreen(viewModel = caseListViewModel)
                     AppTab.Setup -> CaseSetupScreen(
                         viewModel = caseSetupViewModel,
-                        onCaseCreated = { caseId ->
-                            activeCaseId = caseId
+                        onCaseCreated = { createdCase ->
+                            activeCase = createdCase
                             selectedTab = AppTab.Monitoring
                         }
                     )
                     AppTab.Monitoring -> monitoringViewModel?.let { viewModel ->
                         MonitoringScreen(
                             viewModel = viewModel,
+                            patientName = activeCase?.patientName.orEmpty(),
+                            species = activeCase?.species?.name.orEmpty(),
+                            weight = activeCase?.weight?.toString().orEmpty(),
                             onEndSession = { selectedTab = AppTab.Records }
                         )
                     }

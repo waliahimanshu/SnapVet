@@ -7,6 +7,7 @@ struct PatientInfoBarView: View {
     let species: String
     let elapsedTime: String
     let batteryLevel: Int // 0-100
+    var showNudge: Bool = false
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     var body: some View {
@@ -29,7 +30,7 @@ struct PatientInfoBarView: View {
                 }
             }
             .padding(12)
-            .background(Color.snapvetHeaderBg)
+            .background(showNudge ? Color.snapvetAccentWarning.opacity(0.2) : Color.snapvetHeaderBg)
 
             Divider()
                 .background(Color.snapvetDivider)

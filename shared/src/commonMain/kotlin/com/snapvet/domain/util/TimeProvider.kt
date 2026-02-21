@@ -1,6 +1,6 @@
 package com.snapvet.domain.util
 
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 interface TimeProvider {
     fun now(): Instant

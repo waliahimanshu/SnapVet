@@ -4,9 +4,11 @@ import Shared
 @MainActor
 final class AppState: ObservableObject {
     @Published var activeCaseId: String? = nil
+    @Published var activeCase: Case? = nil
     @Published var selectedTab: AppTab = .monitoring
 
     let provider: RepositoryProvider
+    private let endAnesthesiaUsecase: EndAnesthesiaUsecase
 
     let caseListWrapper: CaseListViewModelWrapper
     let caseSetupWrapper: CaseSetupViewModelWrapper
@@ -21,6 +23,10 @@ final class AppState: ObservableObject {
         // let provider = SqlDelightRepositoryProvider(database: database)
         let provider = InMemoryRepositoryProvider()
         self.provider = provider
+        self.endAnesthesiaUsecase = EndAnesthesiaUsecase(
+            caseRepository: provider.caseRepository(),
+            timeProvider: SystemTimeProvider()
+        )
 
         self.caseListWrapper = CaseListViewModelWrapper(
             viewModel: CaseListViewModel(
@@ -40,11 +46,13 @@ final class AppState: ObservableObject {
         )
     }
 
-    func startSession(caseId: String) {
-        activeCaseId = caseId
+    func startSession(caseInfo: Case) {
+        activeCaseId = caseInfo.id
+        activeCase = caseInfo
         monitoringWrapper = MonitoringViewModelWrapper(
             viewModel: MonitoringViewModel(
-                caseId: caseId,
+                caseId: caseInfo.id,
+                caseStartTimeMillis: caseInfo.startTime.toEpochMilliseconds(),
                 saveVitalsUsecase: SaveVitalsUsecase(
                     vitalRecordRepository: provider.vitalRecordRepository(),
                     idGenerator: RandomIdGenerator(),
@@ -53,12 +61,13 @@ final class AppState: ObservableObject {
                 getLatestVitalRecordUsecase: GetLatestVitalRecordUsecase(
                     vitalRecordRepository: provider.vitalRecordRepository()
                 ),
+                timeProvider: SystemTimeProvider(),
                 scope: nil
             )
         )
         recordTableWrapper = RecordTableViewModelWrapper(
             viewModel: RecordTableViewModel(
-                caseId: caseId,
+                caseId: caseInfo.id,
                 observeVitalRecordsUsecase: ObserveVitalRecordsUsecase(
                     vitalRecordRepository: provider.vitalRecordRepository()
                 ),
@@ -69,6 +78,11 @@ final class AppState: ObservableObject {
     }
 
     func endSession() {
+        if let caseId = activeCaseId {
+            Task {
+                _ = try? await endAnesthesiaUsecase.invoke(caseId: caseId)
+            }
+        }
         selectedTab = .records
     }
 }

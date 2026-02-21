@@ -1,6 +1,6 @@
 package com.snapvet.domain.model
 
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 data class Case(
     val id: String,

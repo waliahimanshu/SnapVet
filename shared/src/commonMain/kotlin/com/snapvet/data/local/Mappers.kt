@@ -9,7 +9,7 @@ import com.snapvet.domain.model.ECGReading
 import com.snapvet.domain.model.MucousMembraneReading
 import com.snapvet.domain.model.Species
 import com.snapvet.domain.model.VitalRecord
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 internal fun Cases.toDomain(): Case {
     return Case(

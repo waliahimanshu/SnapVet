@@ -3,10 +3,12 @@ import SwiftUI
 
 struct NumericKeypadView: View {
     @State var currentValue: String = ""
+    var unitLabel: String? = nil
     var onNumberTap: (String) -> Void = { _ in }
     var onDecimalTap: () -> Void = {}
     var onBackspaceTap: () -> Void = {}
     var onConfirm: () -> Void = {}
+    var onClear: () -> Void = {}
     var onCancel: () -> Void = {}
 
     let columns = [
@@ -18,12 +20,17 @@ struct NumericKeypadView: View {
     var body: some View {
         VStack(spacing: 12) {
             // Current value display
-            VStack(alignment: .leading) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(currentValue.isEmpty ? "0" : currentValue)
                     .font(SnapVetFont.displayLarge)
                     .fontWeight(.bold)
                     .foregroundColor(.snapvetAccentPrimary)
                     .tracking(-1)
+                if let unitLabel, !unitLabel.isEmpty {
+                    Text(unitLabel)
+                        .font(SnapVetFont.bodySmall)
+                        .foregroundColor(.snapvetTextSecondary)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .center)
             .frame(minHeight: 80)
@@ -63,6 +70,16 @@ struct NumericKeypadView: View {
 
             // Action buttons
             HStack(spacing: 8) {
+                Button(action: onClear) {
+                    Text("Clear")
+                        .fontWeight(.semibold)
+                        .foregroundColor(.snapvetAccentPrimary)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 52)
+                        .background(Color.snapvetAccentPrimary.opacity(0.2))
+                        .cornerRadius(8)
+                }
+
                 Button(action: onCancel) {
                     Text("Cancel")
                         .fontWeight(.semibold)

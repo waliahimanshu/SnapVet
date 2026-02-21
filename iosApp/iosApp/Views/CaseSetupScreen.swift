@@ -3,7 +3,7 @@ import Shared
 
 struct CaseSetupScreen: View {
     @ObservedObject var viewModel: CaseSetupViewModelWrapper
-    var onCaseCreated: (String) -> Void = { _ in }
+    var onCaseCreated: (Case) -> Void = { _ in }
     @FocusState private var focusedField: Field?
 
     private enum Field {
@@ -50,7 +50,7 @@ struct CaseSetupScreen: View {
                 .textFieldStyle(.roundedBorder)
                 .focused($focusedField, equals: .protocolField)
 
-                Button("Start Case") {
+                Button("Start Anesthesia") {
                     focusedField = nil
                     viewModel.startCase()
                 }
@@ -71,8 +71,8 @@ struct CaseSetupScreen: View {
                 Button("Done") { focusedField = nil }
             }
         }
-        .onChange(of: viewModel.state.createdCase?.id) { newValue in
-            if let id = newValue { onCaseCreated(id) }
+        .onChange(of: viewModel.state.createdCase?.id) { _ in
+            if let created = viewModel.state.createdCase { onCaseCreated(created) }
         }
         .navigationTitle("Case Setup")
     }

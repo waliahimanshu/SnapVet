@@ -5,7 +5,7 @@ import com.snapvet.domain.model.CaseStatus
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
-import kotlinx.datetime.Instant
+import kotlin.time.Instant
 
 class InMemoryCaseRepository : CaseRepository {
     private val cases = MutableStateFlow<List<Case>>(emptyList())

@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.plugin.mpp.apple.XCFramework
+import co.touchlab.skie.configuration.FunctionInterop
 
 plugins {
     alias(libs.plugins.kotlinMultiplatform)
@@ -83,6 +84,16 @@ sqldelight {
             version = 1
             schemaOutputDirectory.set(file("sqldelight/schema"))
             verifyMigrations.set(true)
+        }
+    }
+}
+
+skie {
+    features {
+        // Avoid generating Swift wrappers for Compose ui.unit interface/global extensions
+        // (e.g., toSp) that collide in Swift naming.
+        group("androidx.compose.ui.unit") {
+            FunctionInterop.FileScopeConversion.Enabled(false)
         }
     }
 }

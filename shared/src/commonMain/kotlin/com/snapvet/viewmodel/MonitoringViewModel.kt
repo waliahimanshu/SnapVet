@@ -4,16 +4,21 @@ import com.snapvet.domain.model.VitalRecord
 import com.snapvet.domain.model.VitalsInput
 import com.snapvet.domain.usecase.GetLatestVitalRecordUsecase
 import com.snapvet.domain.usecase.SaveVitalsUsecase
+import com.snapvet.domain.util.TimeProvider
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.minutes
 
 class MonitoringViewModel(
     private val caseId: String,
+    private val caseStartTimeMillis: Long,
     private val saveVitalsUsecase: SaveVitalsUsecase,
     private val getLatestVitalRecordUsecase: GetLatestVitalRecordUsecase,
+    private val timeProvider: TimeProvider,
     scope: CoroutineScope? = null
 ) : BaseViewModel(scope) {
 
@@ -22,6 +27,7 @@ class MonitoringViewModel(
 
     init {
         refreshLatest()
+        startTicker()
     }
 
     fun updateVitals(input: VitalsInput) {
@@ -56,6 +62,22 @@ class MonitoringViewModel(
             _state.value = _state.value.copy(lastSaved = latest)
         }
     }
+
+    private fun startTicker() {
+        scope.launch {
+            while (true) {
+                val now = timeProvider.now().toEpochMilliseconds()
+                val elapsedSeconds = ((now - caseStartTimeMillis).coerceAtLeast(0L)) / 1000L
+                val lastSavedMillis = _state.value.lastSaved?.timestamp?.toEpochMilliseconds()
+                val sinceLastSave = lastSavedMillis?.let { (now - it).coerceAtLeast(0L) / 1000L }
+                _state.value = _state.value.copy(
+                    elapsedSeconds = elapsedSeconds,
+                    secondsSinceLastSave = sinceLastSave
+                )
+                delay(1_000)
+            }
+        }
+    }
 }
 
 data class MonitoringState(
@@ -77,5 +99,10 @@ data class MonitoringState(
     ),
     val lastSaved: VitalRecord? = null,
     val isSaving: Boolean = false,
-    val errorMessage: String? = null
-)
+    val errorMessage: String? = null,
+    val elapsedSeconds: Long = 0L,
+    val secondsSinceLastSave: Long? = null
+) {
+    val shouldNudgeSave: Boolean
+        get() = secondsSinceLastSave != null && secondsSinceLastSave >= 5.minutes.inWholeSeconds
+}
