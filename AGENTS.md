@@ -1,12 +1,12 @@
-# CLAUDE.md
+# AGENTS.md
 
-This file mirrors `AGENTS.md`. If you update rules, keep both in sync.
-
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file mirrors `CLAUDE.md`. If you update rules, keep both in sync.
 
 ## Project Overview
 
 SnapVet is an offline-first veterinary anesthesia monitoring app for iPad and Android tablets, built with Kotlin Multiplatform. It records vital parameters during surgery with fast, tap-based data entry optimized for gloved hands. Currently in early development — design system components exist but core app screens and business logic are not yet implemented.
+
+The design system must work consistently across mobile Android, iPhone iOS, and iPadOS.
 
 ## Build & Run Commands
 
