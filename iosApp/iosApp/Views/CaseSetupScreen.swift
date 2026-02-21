@@ -76,7 +76,7 @@ struct CaseSetupScreen: View {
                             TextField(
                                 "Enter weight in pounds",
                                 text: Binding(
-                                    get: { state.weight.map { formatWeightInput($0) } ?? "" },
+                                    get: { state.weight.map { formatWeightInput(Double(truncating: $0)) } ?? "" },
                                     set: { viewModel.updateWeight(Double($0.filter { "0123456789.".contains($0) })) }
                                 )
                             )

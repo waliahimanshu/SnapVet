@@ -256,12 +256,12 @@ struct RecordTableScreen: View {
         return raw.replacingOccurrences(of: "_", with: " ").lowercased().capitalized
     }
 
-    private func formatTime(_ instant: KotlinTimeInstant) -> String {
+    private func formatTime(_ instant: KotlinInstant) -> String {
         let date = Date(timeIntervalSince1970: TimeInterval(instant.toEpochMilliseconds()) / 1000)
         return DateFormatter.snapvetRecordTime.string(from: date)
     }
 
-    private func formatDate(_ instant: KotlinTimeInstant) -> String {
+    private func formatDate(_ instant: KotlinInstant) -> String {
         let date = Date(timeIntervalSince1970: TimeInterval(instant.toEpochMilliseconds()) / 1000)
         return DateFormatter.snapvetRecordDate.string(from: date)
     }

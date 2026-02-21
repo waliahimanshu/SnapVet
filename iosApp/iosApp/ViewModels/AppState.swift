@@ -18,12 +18,9 @@ final class AppState: ObservableObject {
     @Published var monitoringWrapper: MonitoringViewModelWrapper?
 
     init() {
-        // Swap here: InMemoryRepositoryProvider() or SqlDelightRepositoryProvider
-        // For SQLDelight:
-        // let driverFactory = DatabaseDriverFactory()
-        // let database = DatabaseFactory(driverFactory: driverFactory).create()
-        // let provider = SqlDelightRepositoryProvider(database: database)
-        let provider = InMemoryRepositoryProvider()
+        let driverFactory = DatabaseDriverFactory()
+        let database = DatabaseFactory(driverFactory: driverFactory).create()
+        let provider = SqlDelightRepositoryProvider(database: database)
         self.provider = provider
         self.endAnesthesiaUsecase = EndAnesthesiaUsecase(
             caseRepository: provider.caseRepository(),

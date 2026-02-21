@@ -618,7 +618,7 @@ struct MonitoringScreen: View {
         return "\(seconds)s"
     }
 
-    private func formatTime(_ instant: KotlinTimeInstant) -> String {
+    private func formatTime(_ instant: KotlinInstant) -> String {
         let date = Date(timeIntervalSince1970: TimeInterval(instant.toEpochMilliseconds()) / 1000)
         return DateFormatter.snapvetClock.string(from: date)
     }

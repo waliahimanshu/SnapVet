@@ -135,7 +135,7 @@ struct CaseListScreen: View {
         return String(format: "%.1f lb", value)
     }
 
-    private func formatDate(_ instant: KotlinTimeInstant) -> String {
+    private func formatDate(_ instant: KotlinInstant) -> String {
         let date = Date(timeIntervalSince1970: TimeInterval(instant.toEpochMilliseconds()) / 1000)
         return DateFormatter.snapvetCaseDate.string(from: date)
     }
