@@ -23,4 +23,8 @@ class InMemoryVitalRecordRepository : VitalRecordRepository {
             list.filter { it.caseId == caseId }.sortedByDescending { it.timestamp }
         }
     }
+
+    override suspend fun deleteRecordsForCase(caseId: String) {
+        records.value = records.value.filterNot { it.caseId == caseId }
+    }
 }

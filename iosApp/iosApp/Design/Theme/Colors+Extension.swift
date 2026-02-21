@@ -3,24 +3,24 @@ import SwiftUI
 
 extension Color {
     // MARK: - Primary Backgrounds
-    static let snapvetPrimaryBg = Color(red: 0.173, green: 0.243, blue: 0.314) // #2C3E50
-    static let snapvetTileBg = Color(red: 0.204, green: 0.286, blue: 0.369) // #34495E
-    static let snapvetHeaderBg = Color(red: 0.102, green: 0.140, blue: 0.196) // #1A2332
+    static let snapvetPrimaryBg = Color(red: 0.01, green: 0.09, blue: 0.22) // #03173A
+    static let snapvetTileBg = Color(red: 0.05, green: 0.16, blue: 0.34) // #0D2957
+    static let snapvetHeaderBg = Color(red: 0.03, green: 0.14, blue: 0.31) // #07254F
 
     // MARK: - Accents
-    static let snapvetAccentPrimary = Color(red: 0.153, green: 0.682, blue: 0.376) // #27AE60 (Medical Green)
-    static let snapvetAccentAlert = Color(red: 0.906, green: 0.298, blue: 0.235) // #E74C3C (Coral Red)
-    static let snapvetAccentWarning = Color(red: 0.953, green: 0.612, blue: 0.071) // #F39C12 (Warm Yellow)
-    static let snapvetAccentSuccess = Color(red: 0.118, green: 0.494, blue: 0.204) // #1E7E34
-    static let snapvetAccentError = Color(red: 0.635, green: 0.235, blue: 0.235) // #A23C3C
+    static let snapvetAccentPrimary = Color(red: 0.15, green: 0.39, blue: 1.0) // #2663FF
+    static let snapvetAccentAlert = Color(red: 0.91, green: 0.13, blue: 0.32) // #E82152
+    static let snapvetAccentWarning = Color(red: 0.95, green: 0.62, blue: 0.07) // #F39D12
+    static let snapvetAccentSuccess = Color(red: 0.02, green: 0.72, blue: 0.29) // #04B84A
+    static let snapvetAccentError = Color(red: 0.73, green: 0.13, blue: 0.26) // #BA2142
 
     // MARK: - Text
-    static let snapvetTextPrimary = Color(red: 1.0, green: 1.0, blue: 1.0) // #FFFFFF
-    static let snapvetTextSecondary = Color(red: 0.583, green: 0.647, blue: 0.659) // #95A5A6
-    static let snapvetTextTertiary = Color(red: 0.498, green: 0.549, blue: 0.553) // #7F8C8D
+    static let snapvetTextPrimary = Color(red: 0.94, green: 0.97, blue: 1.0) // #F0F8FF
+    static let snapvetTextSecondary = Color(red: 0.56, green: 0.67, blue: 0.82) // #90ABD0
+    static let snapvetTextTertiary = Color(red: 0.40, green: 0.52, blue: 0.69) // #6684B0
 
     // MARK: - Utility
-    static let snapvetBorderSubtle = Color(red: 0.243, green: 0.329, blue: 0.412) // #3E5369
-    static let snapvetDivider = Color(red: 0.176, green: 0.247, blue: 0.322) // #2D3F52
-    static let snapvetOverlay = Color.black.opacity(0.6)
+    static let snapvetBorderSubtle = Color(red: 0.12, green: 0.25, blue: 0.48) // #1F3E7A
+    static let snapvetDivider = Color(red: 0.08, green: 0.20, blue: 0.40) // #143366
+    static let snapvetOverlay = Color.black.opacity(0.55)
 }

@@ -1,4 +1,5 @@
 import SwiftUI
+import Shared
 
 struct ContentView: View {
     @StateObject private var appState = AppState()
@@ -6,112 +7,81 @@ struct ContentView: View {
     enum Route: Hashable {
         case caseSetup
         case monitoring
-        case sessionEnded
-        case activeRecords
+        case caseDetails(String)
     }
 
     @State private var path: [Route] = []
 
     var body: some View {
         NavigationStack(path: $path) {
-            CaseListScreen(viewModel: appState.caseListWrapper) {
-                appState.prepareNewCase()
-                path.append(.caseSetup)
-            }
+            CaseListScreen(
+                viewModel: appState.caseListWrapper,
+                onNewCase: {
+                    appState.prepareNewCase()
+                    path.append(.caseSetup)
+                },
+                onCaseSelected: { selected in
+                    appState.openCaseDetails(caseInfo: selected)
+                    path.append(.caseDetails(selected.id))
+                }
+            )
             .toolbar(.hidden, for: .navigationBar)
             .navigationDestination(for: Route.self) { route in
                 switch route {
                 case .caseSetup:
-                    CaseSetupScreen(viewModel: appState.caseSetupWrapper) { createdCase in
-                        appState.startSession(caseInfo: createdCase)
-                        path = [.monitoring]
-                    }
+                    CaseSetupScreen(
+                        viewModel: appState.caseSetupWrapper,
+                        onCaseCreated: { createdCase in
+                            appState.startSession(caseInfo: createdCase)
+                            path = [.monitoring]
+                        },
+                        onCancel: {
+                            path = []
+                        }
+                    )
+                    .navigationBarBackButtonHidden(true)
+
                 case .monitoring:
                     if let monitoring = appState.monitoringWrapper {
                         MonitoringScreen(
                             viewModel: monitoring,
                             patientName: appState.activeCase?.patientName ?? "",
                             species: appState.activeCase?.species.name ?? "",
-                            weight: appState.activeCase?.weight.description ?? ""
-                        ) {
-                            appState.endSession()
-                            path = [.sessionEnded]
-                        }
+                            weight: appState.activeCase?.weight.description ?? "",
+                            onExit: {
+                                path = []
+                            },
+                            onEndSession: {
+                                appState.endSession()
+                                path = []
+                            }
+                        )
                         .navigationBarBackButtonHidden(true)
                     }
-                case .sessionEnded:
-                    SessionEndedScreen(
-                        patientName: appState.activeCase?.patientName ?? "This case",
-                        onBrowseCases: {
-                            appState.resetFlowToBrowse()
-                            path = []
-                        },
-                        onViewRecords: {
-                            if appState.recordTableWrapper != nil {
-                                path = [.activeRecords]
+
+                case .caseDetails(let caseId):
+                    if
+                        let selectedCase = appState.selectedCase,
+                        selectedCase.id == caseId,
+                        let records = appState.selectedRecordTableWrapper
+                    {
+                        RecordTableScreen(
+                            viewModel: records,
+                            caseInfo: selectedCase,
+                            onBackToCases: { path = [] },
+                            onDeleteCase: {
+                                Task {
+                                    await appState.deleteCase(caseId: selectedCase.id)
+                                    path = []
+                                }
                             }
-                        },
-                        onStartNewCase: {
-                            appState.prepareNewCase()
-                            path = [.caseSetup]
-                        }
-                    )
-                    .navigationBarBackButtonHidden(true)
-                case .activeRecords:
-                    if let records = appState.recordTableWrapper {
-                        RecordTableScreen(viewModel: records)
+                        )
+                        .navigationBarBackButtonHidden(true)
                     }
                 }
             }
         }
         .background(Color.snapvetPrimaryBg)
-    }
-}
-
-private struct SessionEndedScreen: View {
-    let patientName: String
-    let onBrowseCases: () -> Void
-    let onViewRecords: () -> Void
-    let onStartNewCase: () -> Void
-
-    var body: some View {
-        VStack(spacing: 20) {
-            Spacer()
-
-            Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 72))
-                .foregroundColor(.snapvetAccentPrimary)
-
-            Text("Session Ended")
-                .font(SnapVetFont.titleLarge)
-                .foregroundColor(.snapvetTextPrimary)
-
-            Text("\(patientName) anesthesia has been completed.")
-                .font(SnapVetFont.bodyMedium)
-                .foregroundColor(.snapvetTextSecondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 24)
-
-            VStack(spacing: 12) {
-                Button("View Case Records", action: onViewRecords)
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
-
-                Button("Browse Cases", action: onBrowseCases)
-                    .buttonStyle(.bordered)
-                    .controlSize(.large)
-
-                Button("Start New Case", action: onStartNewCase)
-                    .buttonStyle(.bordered)
-                    .controlSize(.large)
-            }
-
-            Spacer()
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(24)
-        .background(Color.snapvetPrimaryBg)
-        .navigationTitle("Complete")
     }
 }
 

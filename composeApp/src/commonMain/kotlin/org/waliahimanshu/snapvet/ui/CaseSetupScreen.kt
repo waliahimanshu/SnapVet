@@ -66,7 +66,7 @@ fun CaseSetupScreen(
             onValueChange = { value ->
                 viewModel.updateWeight(value.toDoubleOrNull())
             },
-            label = { Text("Weight (kg)") },
+            label = { Text("Weight (lb)") },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             modifier = Modifier.fillMaxWidth()
         )
@@ -87,7 +87,10 @@ fun CaseSetupScreen(
 
         Button(
             onClick = { viewModel.startCase() },
-            enabled = state.patientName.isNotBlank() && state.species != null && state.weight != null
+            enabled = state.patientName.isNotBlank() &&
+                state.species != null &&
+                state.weight != null &&
+                state.procedure.isNotBlank()
         ) {
             Text("Start Anesthesia")
         }

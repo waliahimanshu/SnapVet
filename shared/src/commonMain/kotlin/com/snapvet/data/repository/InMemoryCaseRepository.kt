@@ -36,4 +36,8 @@ class InMemoryCaseRepository : CaseRepository {
             }
         }
     }
+
+    override suspend fun deleteCase(id: String) {
+        cases.value = cases.value.filterNot { it.id == id }
+    }
 }

@@ -1,34 +1,43 @@
 import SwiftUI
 import Shared
 
-private enum VitalField: String, CaseIterable {
+private enum NumericField: String, CaseIterable, Identifiable {
     case hr = "HR"
     case rr = "RR"
     case spo2 = "SpO₂"
     case etco2 = "EtCO₂"
-    case bpSys = "BP Sys"
-    case bpDia = "BP Dia"
-    case bpMap = "BP MAP"
+    case bpSys = "Systolic BP"
+    case bpDia = "Diastolic BP"
     case temp = "Temp"
-    case sevoIso = "Sevo/Iso"
-    case o2Flow = "O₂ Flow"
-    case ecg = "ECG"
-    case crt = "CRT"
-    case mm = "MM"
-    case notes = "Notes"
+    case sevoIso = "Iso/Sevo"
+    case o2Flow = "O₂"
 
     var unit: String {
         switch self {
         case .hr, .rr: return "bpm"
         case .spo2: return "%"
-        case .etco2: return "mmHg"
-        case .bpSys, .bpDia, .bpMap: return "mmHg"
+        case .etco2, .bpSys, .bpDia: return "mmHg"
         case .temp: return "°C"
         case .sevoIso: return "%"
         case .o2Flow: return "L/min"
-        default: return ""
         }
     }
+
+    var allowsDecimal: Bool {
+        switch self {
+        case .temp, .sevoIso, .o2Flow:
+            return true
+        default:
+            return false
+        }
+    }
+
+    var id: String { rawValue }
+}
+
+private struct ObservationOption: Identifiable {
+    let id: String
+    let label: String
 }
 
 struct MonitoringScreen: View {
@@ -36,61 +45,70 @@ struct MonitoringScreen: View {
     var patientName: String
     var species: String
     var weight: String
+    var onExit: () -> Void = {}
     var onEndSession: () -> Void = {}
-    @State private var selectedField: VitalField? = nil
-    @State private var keypadValue: String = ""
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
-    private var current: VitalsInput { viewModel.state.currentVitals }
-    private var last: VitalRecord? { viewModel.state.lastSaved }
+    @State private var selectedField: NumericField?
+    @State private var keypadValue: String = ""
+    @State private var showEndConfirm = false
+
+    private var state: MonitoringState { viewModel.state }
+    private var current: VitalsInput { state.currentVitals }
+    private var lastSaved: VitalRecord? { state.lastSaved }
 
     var body: some View {
-        GeometryReader { proxy in
-            let isCompact = isCompactLayout(width: proxy.size.width, sizeClass: horizontalSizeClass)
-            let columns = monitoringGridColumns(for: proxy.size.width, sizeClass: horizontalSizeClass)
+        ZStack {
+            LinearGradient(
+                colors: [Color.snapvetHeaderBg, Color.snapvetPrimaryBg],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .ignoresSafeArea()
 
-            VStack(spacing: 0) {
-                PatientInfoBarView(
-                    patientName: patientName.isEmpty ? "—" : patientName,
-                    weight: weight.isEmpty ? "—" : weight,
-                    species: species.isEmpty ? "—" : species,
-                    elapsedTime: formatElapsed(seconds: stateElapsedSeconds),
-                    batteryLevel: 68,
-                    showNudge: viewModel.state.shouldNudgeSave
-                )
+            GeometryReader { proxy in
+                let isWide = proxy.size.width >= 950
 
                 ScrollView {
-                    VStack(spacing: 12) {
-                        LazyVGrid(columns: columns, spacing: 12) {
-                            tile(.hr, value: current.hr?.intValue.description, previous: last?.hr?.intValue.description)
-                            tile(.rr, value: current.rr?.intValue.description, previous: last?.rr?.intValue.description)
-                            tile(.spo2, value: current.spo2?.intValue.description, previous: last?.spo2?.intValue.description)
-                            tile(.etco2, value: current.etco2?.intValue.description, previous: last?.etco2?.intValue.description)
-                            tile(.bpSys, value: current.bpSys?.intValue.description, previous: last?.bpSys?.intValue.description)
-                            tile(.bpDia, value: current.bpDia?.intValue.description, previous: last?.bpDia?.intValue.description)
-                            tile(.bpMap, value: current.bpMap?.intValue.description, previous: last?.bpMap?.intValue.description)
-                            tile(.temp, value: current.temp?.doubleValue.description, previous: last?.temp?.doubleValue.description)
-                            tile(.sevoIso, value: current.sevoIso?.doubleValue.description, previous: last?.sevoIso?.doubleValue.description)
-                            tile(.o2Flow, value: current.o2Flow?.doubleValue.description, previous: last?.o2Flow?.doubleValue.description)
-                            tile(.ecg, value: current.ecg?.name, previous: last?.ecg?.name)
-                            tile(.crt, value: current.crt?.name, previous: last?.crt?.name)
-                            tile(.mm, value: current.mucousMembrane?.name, previous: last?.mucousMembrane?.name)
-                            tile(.notes, value: current.notes, previous: last?.notes)
+                    VStack(spacing: 14) {
+                        header
+
+                        if isWide {
+                            HStack(alignment: .top, spacing: 14) {
+                                vitalsGrid(columns: 3)
+                                    .frame(maxWidth: .infinity)
+                                recordedSnapshotsPanel
+                                    .frame(width: 340)
+                            }
+                        } else {
+                            vitalsGrid(columns: proxy.size.width < 650 ? 2 : 3)
+                            recordedSnapshotsPanel
+                        }
+
+                        observationsPanel
+
+                        if let error = state.errorMessage {
+                            Text(error)
+                                .font(SnapVetFont.bodySmall)
+                                .foregroundColor(.snapvetAccentAlert)
                         }
                     }
                     .padding(16)
+                    .padding(.bottom, 98)
                 }
-
-                bottomBar(isCompact: isCompact)
             }
-            .background(Color.snapvetPrimaryBg)
+        }
+        .safeAreaInset(edge: .bottom) {
+            saveBar
         }
         .sheet(item: $selectedField) { field in
             NumericKeypadView(
                 currentValue: keypadValue,
                 unitLabel: field.unit,
                 onNumberTap: { keypadValue.append($0) },
-                onDecimalTap: { if !keypadValue.contains(".") { keypadValue.append(".") } },
+                onDecimalTap: {
+                    guard field.allowsDecimal, !keypadValue.contains(".") else { return }
+                    keypadValue.append(".")
+                },
                 onBackspaceTap: { if !keypadValue.isEmpty { keypadValue.removeLast() } },
                 onConfirm: {
                     applyNumeric(field: field, value: keypadValue)
@@ -99,162 +117,520 @@ struct MonitoringScreen: View {
                 onClear: { keypadValue = "" },
                 onCancel: { selectedField = nil }
             )
-            .padding(16)
+            .padding(12)
             .background(Color.snapvetPrimaryBg)
         }
-        .navigationTitle("Monitoring")
+        .alert("End anesthesia session?", isPresented: $showEndConfirm) {
+            Button("Cancel", role: .cancel) {}
+            Button("End Session", role: .destructive) {
+                onEndSession()
+            }
+        } message: {
+            Text("This marks the case as completed. You can still view records from Case History.")
+        }
+        .navigationBarBackButtonHidden(true)
     }
 
-    private func tile(_ field: VitalField, value: String?, previous: String?) -> some View {
-        ParameterTileView(
-            name: field.rawValue,
-            value: value ?? "—",
-            unit: field.unit,
-            status: .normal,
-            previousValue: previous
-        ) {
-            switch field {
-            case .hr, .rr, .spo2, .etco2, .bpSys, .bpDia, .bpMap, .temp, .sevoIso, .o2Flow:
-                keypadValue = value ?? ""
-                selectedField = field
-            default:
-                break
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Button(action: onExit) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "arrow.left")
+                        Text("Exit")
+                    }
+                    .foregroundColor(.snapvetTextSecondary)
+                    .font(SnapVetFont.titleMedium.weight(.semibold))
+                }
+
+                Spacer()
+
+                Button(action: { showEndConfirm = true }) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "stop.circle")
+                        Text("End Anesthesia")
+                    }
+                    .font(SnapVetFont.titleMedium.weight(.semibold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 14)
+                    .frame(height: 44)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(Color.snapvetAccentAlert)
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+
+            HStack(alignment: .bottom) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(patientName.isEmpty ? "Unnamed Case" : patientName)
+                        .font(SnapVetFont.headlineLarge)
+                        .foregroundColor(.snapvetTextPrimary)
+
+                    Text("\(displaySpecies(species))   \(displayWeight(weight))")
+                        .font(SnapVetFont.bodyMedium)
+                        .foregroundColor(.snapvetTextSecondary)
+                }
+
+                Spacer()
+
+                HStack(spacing: 8) {
+                    Image(systemName: "clock")
+                        .foregroundColor(.snapvetTextPrimary)
+                    Text(formatElapsed(seconds: state.elapsedSeconds))
+                        .font(.system(size: 42, weight: .bold, design: .monospaced))
+                        .foregroundColor(.snapvetTextPrimary)
+                        .minimumScaleFactor(0.7)
+                }
+            }
+        }
+        .padding(16)
+        .snapVetGlassCard(cornerRadius: 20)
+    }
+
+    private func vitalsGrid(columns: Int) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Vital Parameters")
+                .font(SnapVetFont.headlineMedium)
+                .foregroundColor(.snapvetTextPrimary)
+
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: columns), spacing: 10) {
+                ForEach(NumericField.allCases) { field in
+                    ParameterTileView(
+                        name: field.rawValue,
+                        value: formattedValue(for: field),
+                        unit: field.unit,
+                        status: status(for: field),
+                        previousValue: previousValue(for: field)
+                    ) {
+                        keypadValue = rawFieldValue(for: field)
+                        selectedField = field
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .snapVetGlassCard(cornerRadius: 20)
+    }
+
+    private var recordedSnapshotsPanel: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Recorded Vitals")
+                    .font(SnapVetFont.headlineMedium)
+                    .foregroundColor(.snapvetTextPrimary)
+
+                Spacer()
+
+                Text("\(state.recentRecords.count)")
+                    .font(SnapVetFont.labelMedium.weight(.bold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(
+                        Capsule()
+                            .fill(Color.snapvetAccentPrimary)
+                    )
+            }
+
+            if state.recentRecords.isEmpty {
+                Text("No records yet")
+                    .font(SnapVetFont.bodyMedium)
+                    .foregroundColor(.snapvetTextTertiary)
+                    .frame(maxWidth: .infinity, minHeight: 120)
+            } else {
+                VStack(spacing: 8) {
+                    ForEach(Array(state.recentRecords.prefix(4).enumerated()), id: \.element.id) { index, record in
+                        snapshotCard(record: record, index: state.recentRecords.count - index)
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .snapVetGlassCard(cornerRadius: 20)
+    }
+
+    private func snapshotCard(record: VitalRecord, index: Int) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text("#\(index)")
+                    .font(SnapVetFont.titleMedium.weight(.bold))
+                    .foregroundColor(.snapvetTextPrimary)
+                Spacer()
+                Text(formatTime(record.timestamp))
+                    .font(SnapVetFont.bodySmall)
+                    .foregroundColor(.snapvetTextSecondary)
+            }
+
+            Divider().background(Color.snapvetDivider)
+
+            Text("ECG: \(displayEnum(record.ecg?.name, fallback: "-"))")
+                .font(SnapVetFont.bodySmall)
+                .foregroundColor(.snapvetTextSecondary)
+            Text("CRT: \(displayEnum(record.crt?.name, fallback: "-"))")
+                .font(SnapVetFont.bodySmall)
+                .foregroundColor(.snapvetTextSecondary)
+            Text("MM: \(displayEnum(record.mucousMembrane?.name, fallback: "-"))")
+                .font(SnapVetFont.bodySmall)
+                .foregroundColor(.snapvetTextSecondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color.snapvetHeaderBg.opacity(0.5))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(Color.snapvetBorderSubtle, lineWidth: 1)
+        )
+    }
+
+    private var observationsPanel: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Clinical Observations")
+                .font(SnapVetFont.headlineMedium)
+                .foregroundColor(.snapvetTextPrimary)
+
+            observationRow(
+                title: "ECG",
+                options: [
+                    ObservationOption(id: "NSR", label: "Normal"),
+                    ObservationOption(id: "SINUS_BRADY", label: "Brady"),
+                    ObservationOption(id: "SINUS_TACHY", label: "Tachy"),
+                    ObservationOption(id: "VPCS", label: "VPCs"),
+                    ObservationOption(id: "ATRIAL_FIB", label: "A-Fib")
+                ],
+                selectedId: current.ecg?.name,
+                onSelect: { viewModel.updateEcg(name: $0) }
+            )
+
+            observationRow(
+                title: "CRT",
+                options: [
+                    ObservationOption(id: "LESS_THAN_2_SEC", label: "<2s"),
+                    ObservationOption(id: "GREATER_THAN_2_SEC", label: ">2s")
+                ],
+                selectedId: current.crt?.name,
+                onSelect: { viewModel.updateCrt(name: $0) }
+            )
+
+            observationRow(
+                title: "Mucous Membrane",
+                options: [
+                    ObservationOption(id: "PINK", label: "Pink"),
+                    ObservationOption(id: "PALE", label: "Pale"),
+                    ObservationOption(id: "BLUE", label: "Cyanotic"),
+                    ObservationOption(id: "GREY", label: "Grey"),
+                    ObservationOption(id: "MUDDY", label: "Muddy")
+                ],
+                selectedId: current.mucousMembrane?.name,
+                onSelect: { viewModel.updateMucousMembrane(name: $0) }
+            )
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Notes")
+                    .font(SnapVetFont.titleMedium)
+                    .foregroundColor(.snapvetTextSecondary)
+
+                TextField(
+                    "Quick notes (optional)",
+                    text: Binding(
+                        get: { current.notes ?? "" },
+                        set: { viewModel.updateNotes($0) }
+                    )
+                )
+                .padding(.horizontal, 14)
+                .frame(height: 46)
+                .background(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .fill(Color.snapvetHeaderBg.opacity(0.5))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .stroke(Color.snapvetBorderSubtle, lineWidth: 1)
+                )
+                .foregroundColor(.snapvetTextPrimary)
+            }
+        }
+        .padding(16)
+        .snapVetGlassCard(cornerRadius: 20)
+    }
+
+    private func observationRow(
+        title: String,
+        options: [ObservationOption],
+        selectedId: String?,
+        onSelect: @escaping (String) -> Void
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(SnapVetFont.titleMedium)
+                .foregroundColor(.snapvetTextSecondary)
+
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 88), spacing: 8)], alignment: .leading, spacing: 8) {
+                ForEach(options) { option in
+                    Button(action: { onSelect(option.id) }) {
+                        Text(option.label)
+                            .font(SnapVetFont.bodyMedium.weight(.semibold))
+                            .foregroundColor(selectedId == option.id ? .white : .snapvetTextPrimary)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 38)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .fill(selectedId == option.id ? Color.snapvetAccentPrimary : Color.snapvetHeaderBg.opacity(0.5))
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .stroke(selectedId == option.id ? Color.snapvetAccentPrimary : Color.snapvetBorderSubtle, lineWidth: 1)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                }
             }
         }
     }
 
-    private func applyNumeric(field: VitalField, value: String) {
-        let updated = VitalsInput(
-            hr: field == .hr ? kotlinInt(value) : current.hr,
-            rr: field == .rr ? kotlinInt(value) : current.rr,
-            spo2: field == .spo2 ? kotlinInt(value) : current.spo2,
-            etco2: field == .etco2 ? kotlinInt(value) : current.etco2,
-            bpSys: field == .bpSys ? kotlinInt(value) : current.bpSys,
-            bpDia: field == .bpDia ? kotlinInt(value) : current.bpDia,
-            bpMap: field == .bpMap ? kotlinInt(value) : current.bpMap,
-            temp: field == .temp ? kotlinDouble(value) : current.temp,
-            sevoIso: field == .sevoIso ? kotlinDouble(value) : current.sevoIso,
-            o2Flow: field == .o2Flow ? kotlinDouble(value) : current.o2Flow,
-            ecg: current.ecg,
-            crt: current.crt,
-            mucousMembrane: current.mucousMembrane,
-            notes: current.notes
-        )
-        viewModel.updateVitals(updated)
-    }
+    private var saveBar: some View {
+        VStack(spacing: 6) {
+            Button(action: { viewModel.save() }) {
+                HStack(spacing: 8) {
+                    Image(systemName: "square.and.arrow.down")
+                    Text(state.isSaving ? "Saving..." : "Save Entry")
+                        .font(SnapVetFont.titleLarge.weight(.semibold))
+                }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .frame(height: 52)
+                .background(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .fill(Color.snapvetAccentSuccess)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                        .stroke(state.shouldNudgeSave ? Color.snapvetAccentWarning : Color.clear, lineWidth: 2)
+                )
+            }
+            .buttonStyle(.plain)
 
-    private var stateElapsedSeconds: Int64 {
-        viewModel.state.elapsedSeconds
+            Text(saveStatusText)
+                .font(SnapVetFont.bodySmall)
+                .foregroundColor(state.shouldNudgeSave ? .snapvetAccentWarning : .snapvetTextSecondary)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
+        .background(
+            Rectangle()
+                .fill(Color.snapvetHeaderBg.opacity(0.92))
+                .ignoresSafeArea(edges: .bottom)
+        )
     }
 
     private var saveStatusText: String {
-        if let seconds = viewModel.state.secondsSinceLastSave?.int64Value {
-            return "Saved \(formatElapsed(seconds: seconds)) ago"
+        if let seconds = state.secondsSinceLastSave?.int64Value {
+            return "Saved \(relativeElapsed(seconds: seconds)) ago"
         }
         return "Not saved yet"
     }
 
-    private func isCompactLayout(width: CGFloat, sizeClass: UserInterfaceSizeClass?) -> Bool {
-        if sizeClass == .compact { return true }
-        return width < 700
-    }
-
-    private func monitoringGridColumns(for width: CGFloat, sizeClass: UserInterfaceSizeClass?) -> [GridItem] {
-        let count: Int
-        if sizeClass == .compact || width < 700 {
-            count = 2
-        } else if width < 900 {
-            count = 3
-        } else {
-            count = 4
+    private func formattedValue(for field: NumericField) -> String {
+        switch field {
+        case .hr: return displayInt(current.hr)
+        case .rr: return displayInt(current.rr)
+        case .spo2: return displayInt(current.spo2)
+        case .etco2: return displayInt(current.etco2)
+        case .bpSys: return displayInt(current.bpSys)
+        case .bpDia: return displayInt(current.bpDia)
+        case .temp: return displayDouble(current.temp)
+        case .sevoIso: return displayDouble(current.sevoIso)
+        case .o2Flow: return displayDouble(current.o2Flow)
         }
-        return Array(repeating: GridItem(.flexible(), spacing: 12), count: count)
     }
 
-    private func bottomBar(isCompact: Bool) -> some View {
-        Group {
-            if isCompact {
-                VStack(spacing: 12) {
-                    HStack(spacing: 16) {
-                        saveButton
-                        saveStatus
-                        Spacer()
-                    }
-                    endAnesthesiaButton
-                }
-            } else {
-                HStack(spacing: 16) {
-                    saveButton
-                    saveStatus
-                    Spacer()
-                    endAnesthesiaButton
-                }
-            }
+    private func previousValue(for field: NumericField) -> String? {
+        guard let lastSaved else { return nil }
+        switch field {
+        case .hr: return lastSaved.hr?.intValue.description
+        case .rr: return lastSaved.rr?.intValue.description
+        case .spo2: return lastSaved.spo2?.intValue.description
+        case .etco2: return lastSaved.etco2?.intValue.description
+        case .bpSys: return lastSaved.bpSys?.intValue.description
+        case .bpDia: return lastSaved.bpDia?.intValue.description
+        case .temp: return formatOptionalDouble(lastSaved.temp?.doubleValue)
+        case .sevoIso: return formatOptionalDouble(lastSaved.sevoIso?.doubleValue)
+        case .o2Flow: return formatOptionalDouble(lastSaved.o2Flow?.doubleValue)
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 10)
-        .background(Color.snapvetHeaderBg)
     }
 
-    private var saveButton: some View {
-        Button(action: { viewModel.save() }) {
-            HStack(spacing: 8) {
-                Image(systemName: "square.and.arrow.down.fill")
-                Text("Save")
-                    .fontWeight(.semibold)
-            }
-            .foregroundColor(.white)
-            .frame(width: 140)
-            .frame(height: 48)
-            .background(Color.snapvetAccentPrimary)
-            .cornerRadius(12)
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(Color.snapvetAccentWarning, lineWidth: viewModel.state.shouldNudgeSave ? 2 : 0)
+    private func rawFieldValue(for field: NumericField) -> String {
+        switch field {
+        case .hr: return current.hr?.intValue.description ?? ""
+        case .rr: return current.rr?.intValue.description ?? ""
+        case .spo2: return current.spo2?.intValue.description ?? ""
+        case .etco2: return current.etco2?.intValue.description ?? ""
+        case .bpSys: return current.bpSys?.intValue.description ?? ""
+        case .bpDia: return current.bpDia?.intValue.description ?? ""
+        case .temp: return formatOptionalDouble(current.temp?.doubleValue) ?? ""
+        case .sevoIso: return formatOptionalDouble(current.sevoIso?.doubleValue) ?? ""
+        case .o2Flow: return formatOptionalDouble(current.o2Flow?.doubleValue) ?? ""
+        }
+    }
+
+    private func applyNumeric(field: NumericField, value: String) {
+        var hr = current.hr
+        var rr = current.rr
+        var spo2 = current.spo2
+        var etco2 = current.etco2
+        var bpSys = current.bpSys
+        var bpDia = current.bpDia
+        var bpMap = current.bpMap
+        var temp = current.temp
+        var sevoIso = current.sevoIso
+        var o2Flow = current.o2Flow
+
+        switch field {
+        case .hr: hr = kotlinInt(value)
+        case .rr: rr = kotlinInt(value)
+        case .spo2: spo2 = kotlinInt(value)
+        case .etco2: etco2 = kotlinInt(value)
+        case .bpSys:
+            bpSys = kotlinInt(value)
+            bpMap = computeMap(sys: bpSys, dia: bpDia)
+        case .bpDia:
+            bpDia = kotlinInt(value)
+            bpMap = computeMap(sys: bpSys, dia: bpDia)
+        case .temp: temp = kotlinDouble(value)
+        case .sevoIso: sevoIso = kotlinDouble(value)
+        case .o2Flow: o2Flow = kotlinDouble(value)
+        }
+
+        viewModel.updateVitals(
+            VitalsInput(
+                hr: hr,
+                rr: rr,
+                spo2: spo2,
+                etco2: etco2,
+                bpSys: bpSys,
+                bpDia: bpDia,
+                bpMap: bpMap,
+                temp: temp,
+                sevoIso: sevoIso,
+                o2Flow: o2Flow,
+                ecg: current.ecg,
+                crt: current.crt,
+                mucousMembrane: current.mucousMembrane,
+                notes: current.notes
             )
+        )
+    }
+
+    private func computeMap(sys: KotlinInt?, dia: KotlinInt?) -> KotlinInt? {
+        guard let sys, let dia else { return nil }
+        let map = (Int(sys.intValue) + (2 * Int(dia.intValue))) / 3
+        return KotlinInt(int: Int32(map))
+    }
+
+    private func status(for field: NumericField) -> ParameterStatus {
+        switch field {
+        case .hr:
+            return statusForInt(current.hr, warningRange: 60...160, alertRange: 45...190)
+        case .rr:
+            return statusForInt(current.rr, warningRange: 8...45, alertRange: 5...60)
+        case .spo2:
+            guard let value = current.spo2?.intValue else { return .normal }
+            if value < 90 { return .alert }
+            if value < 95 { return .warning }
+            return .normal
+        case .etco2:
+            guard let value = current.etco2?.intValue else { return .normal }
+            if value < 25 || value > 65 { return .alert }
+            if value < 30 || value > 55 { return .warning }
+            return .normal
+        case .bpSys:
+            return statusForInt(current.bpSys, warningRange: 80...170, alertRange: 70...190)
+        case .bpDia:
+            return statusForInt(current.bpDia, warningRange: 45...110, alertRange: 35...130)
+        case .temp:
+            guard let value = current.temp?.doubleValue else { return .normal }
+            if value < 35.5 || value > 40 { return .alert }
+            if value < 36.5 || value > 39 { return .warning }
+            return .normal
+        case .sevoIso, .o2Flow:
+            return .normal
         }
     }
 
-    private var saveStatus: some View {
-        HStack(spacing: 8) {
-            Image(systemName: viewModel.state.shouldNudgeSave ? "exclamationmark.circle.fill" : "checkmark.circle.fill")
-                .foregroundColor(viewModel.state.shouldNudgeSave ? .snapvetAccentWarning : .snapvetAccentPrimary)
-                .font(.system(size: 16))
-            Text(saveStatusText)
-                .font(SnapVetFont.bodySmall)
-                .foregroundColor(viewModel.state.shouldNudgeSave ? .snapvetAccentWarning : .snapvetTextSecondary)
-        }
+    private func statusForInt(_ value: KotlinInt?, warningRange: ClosedRange<Int>, alertRange: ClosedRange<Int>) -> ParameterStatus {
+        guard let value = value?.intValue else { return .normal }
+        if !alertRange.contains(Int(value)) { return .alert }
+        if !warningRange.contains(Int(value)) { return .warning }
+        return .normal
     }
 
-    private var endAnesthesiaButton: some View {
-        Button(action: { onEndSession() }) {
-            HStack(spacing: 8) {
-                Image(systemName: "stop.circle.fill")
-                Text("End Anesthesia")
-                    .fontWeight(.semibold)
-            }
-            .foregroundColor(.snapvetAccentAlert)
-            .frame(width: 200)
-            .frame(height: 48)
-            .background(Color.snapvetTileBg)
-            .cornerRadius(12)
-            .overlay(
-                RoundedRectangle(cornerRadius: 12)
-                    .stroke(Color.snapvetAccentAlert.opacity(0.4), lineWidth: 1)
-            )
+    private func displayInt(_ value: KotlinInt?) -> String {
+        value?.intValue.description ?? "--"
+    }
+
+    private func displayDouble(_ value: KotlinDouble?) -> String {
+        formatOptionalDouble(value?.doubleValue) ?? "--"
+    }
+
+    private func formatOptionalDouble(_ value: Double?) -> String? {
+        guard let value else { return nil }
+        if value.rounded() == value {
+            return "\(Int(value))"
         }
+        return String(format: "%.1f", value)
+    }
+
+    private func displaySpecies(_ value: String) -> String {
+        value.capitalized
+    }
+
+    private func displayWeight(_ value: String) -> String {
+        guard !value.isEmpty else { return "—" }
+        return "\(value) lb"
+    }
+
+    private func displayEnum(_ rawName: String?, fallback: String) -> String {
+        guard let rawName else { return fallback }
+        return rawName
+            .replacingOccurrences(of: "_", with: " ")
+            .lowercased()
+            .capitalized
     }
 
     private func formatElapsed(seconds: Int64) -> String {
-        let minutes = seconds / 60
-        let remaining = seconds % 60
-        if minutes >= 60 {
-            let hours = minutes / 60
-            let mins = minutes % 60
-            return String(format: "%d:%02d", hours, mins)
-        }
-        return String(format: "%02d:%02d", minutes, remaining)
+        let hours = max(0, seconds / 3600)
+        let minutes = max(0, (seconds % 3600) / 60)
+        let remaining = max(0, seconds % 60)
+        return String(format: "%02d:%02d:%02d", hours, minutes, remaining)
     }
+
+    private func relativeElapsed(seconds: Int64) -> String {
+        if seconds >= 3600 {
+            return "\(seconds / 3600)h"
+        }
+        if seconds >= 60 {
+            return "\(seconds / 60)m"
+        }
+        return "\(seconds)s"
+    }
+
+    private func formatTime(_ instant: KotlinTimeInstant) -> String {
+        let date = Date(timeIntervalSince1970: TimeInterval(instant.toEpochMilliseconds()) / 1000)
+        return DateFormatter.snapvetClock.string(from: date)
+    }
+}
+
+private extension DateFormatter {
+    static let snapvetClock: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .medium
+        formatter.dateStyle = .none
+        return formatter
+    }()
 }
 
 private func kotlinInt(_ value: String) -> KotlinInt? {
@@ -267,6 +643,38 @@ private func kotlinDouble(_ value: String) -> KotlinDouble? {
     return KotlinDouble(double: doubleValue)
 }
 
-extension VitalField: Identifiable {
-    var id: String { rawValue }
+private extension View {
+    @ViewBuilder
+    func snapVetGlassCard(cornerRadius: CGFloat) -> some View {
+#if swift(>=6.2)
+        if #available(iOS 26.0, *) {
+            self
+                .glassEffect(.regular, in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .stroke(Color.white.opacity(0.14), lineWidth: 1)
+                )
+        } else {
+            self
+                .background(
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .fill(Color.snapvetTileBg.opacity(0.78))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .stroke(Color.snapvetBorderSubtle, lineWidth: 1)
+                )
+        }
+#else
+        self
+            .background(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(Color.snapvetTileBg.opacity(0.78))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .stroke(Color.snapvetBorderSubtle, lineWidth: 1)
+            )
+#endif
+    }
 }

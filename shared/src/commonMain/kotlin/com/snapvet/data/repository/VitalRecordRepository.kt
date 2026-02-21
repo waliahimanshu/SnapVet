@@ -7,4 +7,5 @@ interface VitalRecordRepository {
     suspend fun insertRecord(record: VitalRecord)
     suspend fun getLatestRecord(caseId: String): VitalRecord?
     fun observeRecords(caseId: String): Flow<List<VitalRecord>>
+    suspend fun deleteRecordsForCase(caseId: String)
 }

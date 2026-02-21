@@ -40,7 +40,12 @@ class CaseSetupViewModel(
 
     fun startCase() {
         val current = _state.value
-        if (current.patientName.isBlank() || current.species == null || current.weight == null) {
+        if (
+            current.patientName.isBlank() ||
+            current.species == null ||
+            current.weight == null ||
+            current.procedure.isBlank()
+        ) {
             _state.value = current.copy(errorMessage = "Missing required fields")
             return
         }

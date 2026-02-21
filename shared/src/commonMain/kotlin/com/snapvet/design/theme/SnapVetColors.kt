@@ -4,24 +4,24 @@ import androidx.compose.ui.graphics.Color
 
 object SnapVetColors {
     // Primary backgrounds
-    val PrimaryBg = Color(0xFF2C3E50)      // Main background
-    val TileBg = Color(0xFF34495E)         // Tile/card background
-    val HeaderBg = Color(0xFF1A2332)       // Header bar background
+    val PrimaryBg = Color(0xFF03173A)
+    val TileBg = Color(0xFF0D2957)
+    val HeaderBg = Color(0xFF07254F)
 
     // Accents
-    val AccentPrimary = Color(0xFF27AE60)  // Medical green - primary actions
-    val AccentAlert = Color(0xFFE74C3C)    // Coral red - abnormal values
-    val AccentWarning = Color(0xFFF39C12)  // Warm yellow - 5-min nudge
-    val AccentSuccess = Color(0xFF1E7E34)  // Deep green - success state
-    val AccentError = Color(0xFFA23C3C)    // Deep red - error state
+    val AccentPrimary = Color(0xFF2663FF)
+    val AccentAlert = Color(0xFFE82152)
+    val AccentWarning = Color(0xFFF39D12)
+    val AccentSuccess = Color(0xFF04B84A)
+    val AccentError = Color(0xFFBA2142)
 
     // Text
-    val TextPrimary = Color(0xFFFFFFFF)    // White - main text
-    val TextSecondary = Color(0xFF95A5A6)  // Light gray - secondary text
-    val TextTertiary = Color(0xFF7F8C8D)   // Muted - disabled/tertiary
+    val TextPrimary = Color(0xFFF0F8FF)
+    val TextSecondary = Color(0xFF90ABD0)
+    val TextTertiary = Color(0xFF6684B0)
 
     // Utility
-    val BorderSubtle = Color(0xFF3E5369)   // Card borders
-    val Divider = Color(0xFF2D3F52)        // Divider lines
-    val Overlay = Color(0x99000000)        // Modal overlay
+    val BorderSubtle = Color(0xFF1F3E7A)
+    val Divider = Color(0xFF143366)
+    val Overlay = Color(0x99000000)
 }

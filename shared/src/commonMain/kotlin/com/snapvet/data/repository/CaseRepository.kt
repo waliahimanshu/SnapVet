@@ -10,4 +10,5 @@ interface CaseRepository {
     suspend fun getCaseById(id: String): Case?
     fun observeCases(status: CaseStatus? = null): Flow<List<Case>>
     suspend fun updateCaseStatus(id: String, status: CaseStatus, endTime: Instant?)
+    suspend fun deleteCase(id: String)
 }

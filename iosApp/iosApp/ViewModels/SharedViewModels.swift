@@ -90,5 +90,21 @@ final class MonitoringViewModelWrapper: ObservableObject {
         viewModel.updateVitals(input: updated)
     }
 
+    func updateEcg(name: String?) {
+        viewModel.updateEcg(name: name)
+    }
+
+    func updateCrt(name: String?) {
+        viewModel.updateCrt(name: name)
+    }
+
+    func updateMucousMembrane(name: String?) {
+        viewModel.updateMucousMembrane(name: name)
+    }
+
+    func updateNotes(_ value: String?) {
+        viewModel.updateNotes(value: value)
+    }
+
     func save() { viewModel.save() }
 }

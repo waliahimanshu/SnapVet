@@ -56,6 +56,7 @@ fun App(provider: RepositoryProvider) {
                     caseStartTimeMillis = case.startTime.toEpochMilliseconds(),
                     saveVitalsUsecase = provider.saveVitalsUsecase(),
                     getLatestVitalRecordUsecase = provider.getLatestVitalRecordUsecase(),
+                    observeVitalRecordsUsecase = provider.observeVitalRecordsUsecase(),
                     timeProvider = SystemTimeProvider(),
                     scope = null
                 )
