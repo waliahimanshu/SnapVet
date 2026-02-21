@@ -561,30 +561,9 @@ enum class MucousMembraneReading {
 
 **Goal**: Set up project structure and data layer
 
-#### Milestone 1.1: Project Setup
-
-- [ ] Initialize KMP project with Android + iOS targets
-- [ ] Configure Gradle build files
-- [ ] Set up module structure (shared, androidApp, iosApp)
-- [ ] Add dependencies (SQLDelight, Koin, kotlinx-datetime, Voyager, SKIE)
-- [ ] Verify Android build
-- [ ] Verify iOS build (Xcode project generation)
-- [ ] Set up version control (.gitignore properly configured)
-
-**Deliverable**: Empty project that compiles on both platforms
 
 #### Milestone 1.2: Data Models & Database
 
-- [ ] Create domain models (Case, VitalRecord, enums)
-- [ ] Define SQLDelight schema (.sq files)
-    - [ ] Cases table
-    - [ ] VitalRecords table
-    - [ ] Queries: insert, update, getById, getAll, etc.
-- [ ] Set up database driver (expect/actual)
-- [ ] Write repository interfaces
-- [ ] Implement CaseRepository
-- [ ] Implement VitalRepository
-- [ ] Write unit tests for repositories
 
 **Deliverable**: Working local database with CRUD operations
 
@@ -613,9 +592,8 @@ enum class MucousMembraneReading {
 
 **Goal**: Build the most critical screen - where vets spend 90% of their time
 
-#### Milestone 2.1: Android Monitoring Screen (UI Only)
+#### Milestone 2.1:  Monitoring Screen (UI Only)
 
-- [ ] Create MonitoringScreen composable
 - [ ] Build patient info header (name, weight, species, elapsed timer, battery indicator)
 - [ ] Create parameter tile grid layout (4x3 for iPad, responsive for other sizes)
 - [ ] Build numeric tiles (standard tiles):

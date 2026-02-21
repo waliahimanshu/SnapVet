@@ -7,52 +7,24 @@ struct PatientInfoBarView: View {
     let species: String
     let elapsedTime: String
     let batteryLevel: Int // 0-100
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 16) {
-                // Patient info
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(patientName)
-                        .font(SnapVetFont.titleLarge)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.snapvetTextPrimary)
-
-                    HStack(spacing: 12) {
-                        Text("\(weight) kg")
-                            .font(SnapVetFont.bodySmall)
-                            .foregroundColor(.snapvetTextSecondary)
-
-                        Circle()
-                            .fill(Color.snapvetBorderSubtle)
-                            .frame(width: 3, height: 3)
-
-                        Text(species)
-                            .font(SnapVetFont.bodySmall)
-                            .foregroundColor(.snapvetTextSecondary)
+            Group {
+                if horizontalSizeClass == .compact {
+                    VStack(alignment: .leading, spacing: 8) {
+                        patientInfo
+                        HStack {
+                            timerAndBattery
+                            Spacer()
+                        }
                     }
-                }
-
-                Spacer()
-
-                // Timer and battery
-                VStack(alignment: .trailing, spacing: 4) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "timer")
-                            .font(.system(size: 14, weight: .semibold))
-
-                        Text(elapsedTime)
-                            .font(SnapVetFont.titleMedium)
-                            .fontWeight(.semibold)
-                    }
-                    .foregroundColor(.snapvetAccentPrimary)
-
-                    HStack(spacing: 4) {
-                        BatteryIndicatorView(level: batteryLevel)
-
-                        Text("\(batteryLevel)%")
-                            .font(SnapVetFont.bodySmall)
-                            .foregroundColor(.snapvetTextSecondary)
+                } else {
+                    HStack(spacing: 16) {
+                        patientInfo
+                        Spacer()
+                        timerAndBattery
                     }
                 }
             }
@@ -61,6 +33,51 @@ struct PatientInfoBarView: View {
 
             Divider()
                 .background(Color.snapvetDivider)
+        }
+    }
+
+    private var patientInfo: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(patientName)
+                .font(SnapVetFont.titleLarge)
+                .fontWeight(.semibold)
+                .foregroundColor(.snapvetTextPrimary)
+
+            HStack(spacing: 12) {
+                Text("\(weight) kg")
+                    .font(SnapVetFont.bodySmall)
+                    .foregroundColor(.snapvetTextSecondary)
+
+                Circle()
+                    .fill(Color.snapvetBorderSubtle)
+                    .frame(width: 3, height: 3)
+
+                Text(species)
+                    .font(SnapVetFont.bodySmall)
+                    .foregroundColor(.snapvetTextSecondary)
+            }
+        }
+    }
+
+    private var timerAndBattery: some View {
+        VStack(alignment: .trailing, spacing: 4) {
+            HStack(spacing: 6) {
+                Image(systemName: "timer")
+                    .font(.system(size: 14, weight: .semibold))
+
+                Text(elapsedTime)
+                    .font(SnapVetFont.titleMedium)
+                    .fontWeight(.semibold)
+            }
+            .foregroundColor(.snapvetAccentPrimary)
+
+            HStack(spacing: 4) {
+                BatteryIndicatorView(level: batteryLevel)
+
+                Text("\(batteryLevel)%")
+                    .font(SnapVetFont.bodySmall)
+                    .foregroundColor(.snapvetTextSecondary)
+            }
         }
     }
 }

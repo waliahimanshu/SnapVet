@@ -9,6 +9,7 @@ struct DesignSystemShowcaseView: View {
     @State private var selectedChipId: String? = "pink"
     @State private var selectedEcgId: String? = "nsr"
     @State private var selectedCrtId: String? = "lt2"
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     private let mucousMembraneOptions = [
         ChipOption(id: "pink", label: "Pink (Normal)", color: Color(red: 1.0, green: 0.75, blue: 0.80)),
@@ -32,42 +33,44 @@ struct DesignSystemShowcaseView: View {
     ]
 
     var body: some View {
-        VStack(spacing: 0) {
-            // Patient Info Bar — always visible at top
-            PatientInfoBarView(
-                patientName: "Bella",
-                weight: "12.4",
-                species: "Dog — Labrador Retriever",
-                elapsedTime: "25:10",
-                batteryLevel: 68
-            )
+        GeometryReader { proxy in
+            let isCompact = isCompactLayout(width: proxy.size.width, sizeClass: horizontalSizeClass)
+            let columns = monitoringGridColumns(for: proxy.size.width, sizeClass: horizontalSizeClass)
 
-            ScrollView {
-                VStack(spacing: 12) {
-                    monitoringGrid
+            VStack(spacing: 0) {
+                // Patient Info Bar — always visible at top
+                PatientInfoBarView(
+                    patientName: "Bella",
+                    weight: "12.4",
+                    species: "Dog — Labrador Retriever",
+                    elapsedTime: "25:10",
+                    batteryLevel: 68
+                )
 
-                    Divider().background(Color.snapvetDivider)
+                ScrollView {
+                    VStack(spacing: 12) {
+                        monitoringGrid(columns: columns)
 
-                    // Input overlays: Keypad + Chip Selectors side by side
-                    inputComponents
+                        Divider().background(Color.snapvetDivider)
+
+                        // Input overlays: Keypad + Chip Selectors side by side
+                        inputComponents(isCompact: isCompact)
+                    }
+                    .padding(16)
                 }
-                .padding(16)
+                .background(Color.snapvetPrimaryBg)
+
+                // Bottom bar: Save button + status + End Anesthesia
+                bottomBar(isCompact: isCompact)
             }
             .background(Color.snapvetPrimaryBg)
-
-            // Bottom bar: Save button + status + End Anesthesia
-            bottomBar
         }
-        .background(Color.snapvetPrimaryBg)
     }
 
     // MARK: - Monitoring Grid (4x3 matching README spec)
 
-    private var monitoringGrid: some View {
-        LazyVGrid(
-            columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 4),
-            spacing: 12
-        ) {
+    private func monitoringGrid(columns: [GridItem]) -> some View {
+        LazyVGrid(columns: columns, spacing: 12) {
             // Row 1: Critical vitals — updated every 5 min
             ParameterTileView(name: "HR", value: "88", unit: "bpm", status: .normal, previousValue: "85")
             ParameterTileView(name: "RR", value: "12", unit: "bpm", status: .normal)
@@ -90,120 +93,152 @@ struct DesignSystemShowcaseView: View {
 
     // MARK: - Input Components (Keypad + Chip Selectors)
 
-    private var inputComponents: some View {
-        HStack(alignment: .top, spacing: 16) {
-            // Numeric Keypad — for HR, RR, SpO₂, BP, EtCO₂, Temp, Sevo%, O₂
+    private func inputComponents(isCompact: Bool) -> some View {
+        Group {
+            if isCompact {
+                VStack(alignment: .leading, spacing: 16) {
+                    numericKeypadSection
+                    chipSelectorsSection
+                }
+            } else {
+                HStack(alignment: .top, spacing: 16) {
+                    numericKeypadSection
+                        .frame(maxWidth: 320)
+                    chipSelectorsSection
+                    Spacer()
+                }
+            }
+        }
+    }
+
+    private var numericKeypadSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            sectionHeader("Numeric Keypad — Heart Rate")
+            NumericKeypadView(
+                currentValue: keypadValue,
+                onNumberTap: { num in keypadValue += num },
+                onDecimalTap: {
+                    if !keypadValue.contains(".") { keypadValue += "." }
+                },
+                onBackspaceTap: {
+                    if !keypadValue.isEmpty { keypadValue.removeLast() }
+                },
+                onConfirm: {},
+                onCancel: { keypadValue = "" }
+            )
+        }
+    }
+
+    private var chipSelectorsSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 8) {
-                sectionHeader("Numeric Keypad — Heart Rate")
-                NumericKeypadView(
-                    currentValue: keypadValue,
-                    onNumberTap: { num in keypadValue += num },
-                    onDecimalTap: {
-                        if !keypadValue.contains(".") { keypadValue += "." }
-                    },
-                    onBackspaceTap: {
-                        if !keypadValue.isEmpty { keypadValue.removeLast() }
-                    },
-                    onConfirm: {},
-                    onCancel: { keypadValue = "" }
+                sectionHeader("ECG Rhythm")
+                ChipSelectorView(
+                    options: ecgOptions,
+                    selectedId: selectedEcgId,
+                    onSelectionChange: { id in selectedEcgId = id }
                 )
-            }
-            .frame(maxWidth: 320)
-
-            // Chip selectors — for ECG, CRT, Mucous Membrane
-            VStack(alignment: .leading, spacing: 16) {
-                VStack(alignment: .leading, spacing: 8) {
-                    sectionHeader("ECG Rhythm")
-                    ChipSelectorView(
-                        options: ecgOptions,
-                        selectedId: selectedEcgId,
-                        onSelectionChange: { id in selectedEcgId = id }
-                    )
-                    .padding(12)
-                    .background(Color.snapvetHeaderBg)
-                    .cornerRadius(12)
-                }
-
-                VStack(alignment: .leading, spacing: 8) {
-                    sectionHeader("CRT")
-                    ChipSelectorView(
-                        options: crtOptions,
-                        selectedId: selectedCrtId,
-                        onSelectionChange: { id in selectedCrtId = id }
-                    )
-                    .padding(12)
-                    .background(Color.snapvetHeaderBg)
-                    .cornerRadius(12)
-                }
-
-                VStack(alignment: .leading, spacing: 8) {
-                    sectionHeader("Mucous Membrane")
-                    ChipSelectorView(
-                        options: mucousMembraneOptions,
-                        selectedId: selectedChipId,
-                        onSelectionChange: { id in selectedChipId = id }
-                    )
-                    .padding(12)
-                    .background(Color.snapvetHeaderBg)
-                    .cornerRadius(12)
-                }
+                .padding(12)
+                .background(Color.snapvetHeaderBg)
+                .cornerRadius(12)
             }
 
-            Spacer()
+            VStack(alignment: .leading, spacing: 8) {
+                sectionHeader("CRT")
+                ChipSelectorView(
+                    options: crtOptions,
+                    selectedId: selectedCrtId,
+                    onSelectionChange: { id in selectedCrtId = id }
+                )
+                .padding(12)
+                .background(Color.snapvetHeaderBg)
+                .cornerRadius(12)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                sectionHeader("Mucous Membrane")
+                ChipSelectorView(
+                    options: mucousMembraneOptions,
+                    selectedId: selectedChipId,
+                    onSelectionChange: { id in selectedChipId = id }
+                )
+                .padding(12)
+                .background(Color.snapvetHeaderBg)
+                .cornerRadius(12)
+            }
         }
     }
 
     // MARK: - Bottom Bar (Save button + status + End Anesthesia)
 
-    private var bottomBar: some View {
-        HStack(spacing: 16) {
-            // Save button — green, prominent
-            Button(action: {}) {
-                HStack(spacing: 8) {
-                    Image(systemName: "square.and.arrow.down.fill")
-                    Text("Save")
-                        .fontWeight(.semibold)
+    private func bottomBar(isCompact: Bool) -> some View {
+        Group {
+            if isCompact {
+                VStack(spacing: 12) {
+                    HStack(spacing: 16) {
+                        saveButton
+                        saveStatus
+                        Spacer()
+                    }
+                    endAnesthesiaButton
                 }
-                .foregroundColor(.white)
-                .frame(width: 140)
-                .frame(height: 48)
-                .background(Color.snapvetAccentPrimary)
-                .cornerRadius(12)
-            }
-
-            // Save status indicator
-            HStack(spacing: 8) {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundColor(.snapvetAccentPrimary)
-                    .font(.system(size: 16))
-                Text("Saved 2m ago")
-                    .font(SnapVetFont.bodySmall)
-                    .foregroundColor(.snapvetTextSecondary)
-            }
-
-            Spacer()
-
-            // End Anesthesia
-            Button(action: {}) {
-                HStack(spacing: 8) {
-                    Image(systemName: "stop.circle.fill")
-                    Text("End Anesthesia")
-                        .fontWeight(.semibold)
+            } else {
+                HStack(spacing: 16) {
+                    saveButton
+                    saveStatus
+                    Spacer()
+                    endAnesthesiaButton
                 }
-                .foregroundColor(.snapvetAccentAlert)
-                .frame(width: 200)
-                .frame(height: 48)
-                .background(Color.snapvetTileBg)
-                .cornerRadius(12)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(Color.snapvetAccentAlert.opacity(0.4), lineWidth: 1)
-                )
             }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
         .background(Color.snapvetHeaderBg)
+    }
+
+    private var saveButton: some View {
+        Button(action: {}) {
+            HStack(spacing: 8) {
+                Image(systemName: "square.and.arrow.down.fill")
+                Text("Save")
+                    .fontWeight(.semibold)
+            }
+            .foregroundColor(.white)
+            .frame(width: 140)
+            .frame(height: 48)
+            .background(Color.snapvetAccentPrimary)
+            .cornerRadius(12)
+        }
+    }
+
+    private var saveStatus: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "checkmark.circle.fill")
+                .foregroundColor(.snapvetAccentPrimary)
+                .font(.system(size: 16))
+            Text("Saved 2m ago")
+                .font(SnapVetFont.bodySmall)
+                .foregroundColor(.snapvetTextSecondary)
+        }
+    }
+
+    private var endAnesthesiaButton: some View {
+        Button(action: {}) {
+            HStack(spacing: 8) {
+                Image(systemName: "stop.circle.fill")
+                Text("End Anesthesia")
+                    .fontWeight(.semibold)
+            }
+            .foregroundColor(.snapvetAccentAlert)
+            .frame(width: 200)
+            .frame(height: 48)
+            .background(Color.snapvetTileBg)
+            .cornerRadius(12)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color.snapvetAccentAlert.opacity(0.4), lineWidth: 1)
+            )
+        }
     }
 
     private func sectionHeader(_ title: String) -> some View {
@@ -220,186 +255,236 @@ struct DesignSystemShowcaseView: View {
 // MARK: - Start of Case Showcase (empty tiles at induction)
 
 struct EmptyMonitoringShowcaseView: View {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
     var body: some View {
-        VStack(spacing: 0) {
-            PatientInfoBarView(
-                patientName: "Whiskers",
-                weight: "4.2",
-                species: "Cat — Domestic Shorthair",
-                elapsedTime: "00:00",
-                batteryLevel: 95
-            )
+        GeometryReader { proxy in
+            let isCompact = isCompactLayout(width: proxy.size.width, sizeClass: horizontalSizeClass)
+            let columns = monitoringGridColumns(for: proxy.size.width, sizeClass: horizontalSizeClass)
 
-            VStack(spacing: 12) {
-                LazyVGrid(
-                    columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 4),
-                    spacing: 12
-                ) {
-                    // All tiles empty — start of anesthesia, tap any tile to begin entering values
-                    ParameterTileView(name: "HR", value: "—", unit: "bpm", status: .normal)
-                    ParameterTileView(name: "RR", value: "—", unit: "bpm", status: .normal)
-                    ParameterTileView(name: "SpO₂", value: "—", unit: "%", status: .normal)
-                    ParameterTileView(name: "BP", value: "—/—", unit: "(—)", status: .normal)
+            VStack(spacing: 0) {
+                PatientInfoBarView(
+                    patientName: "Whiskers",
+                    weight: "4.2",
+                    species: "Cat — Domestic Shorthair",
+                    elapsedTime: "00:00",
+                    batteryLevel: 95
+                )
 
-                    ParameterTileView(name: "EtCO₂", value: "—", unit: "mmHg", status: .normal)
-                    ParameterTileView(name: "Temp", value: "—", unit: "°C", status: .normal)
-                    ParameterTileView(name: "Sevo%", value: "—", unit: "%", status: .normal)
-                    ParameterTileView(name: "O₂ Flow", value: "—", unit: "L/min", status: .normal)
+                VStack(spacing: 12) {
+                    LazyVGrid(columns: columns, spacing: 12) {
+                        // All tiles empty — start of anesthesia, tap any tile to begin entering values
+                        ParameterTileView(name: "HR", value: "—", unit: "bpm", status: .normal)
+                        ParameterTileView(name: "RR", value: "—", unit: "bpm", status: .normal)
+                        ParameterTileView(name: "SpO₂", value: "—", unit: "%", status: .normal)
+                        ParameterTileView(name: "BP", value: "—/—", unit: "(—)", status: .normal)
 
-                    ParameterTileView(name: "ECG", value: "—", unit: "", status: .normal)
-                    ParameterTileView(name: "CRT", value: "—", unit: "", status: .normal)
-                    ParameterTileView(name: "MM", value: "—", unit: "", status: .normal)
-                    ParameterTileView(name: "Notes", value: "—", unit: "", status: .normal)
-                }
-            }
-            .padding(16)
+                        ParameterTileView(name: "EtCO₂", value: "—", unit: "mmHg", status: .normal)
+                        ParameterTileView(name: "Temp", value: "—", unit: "°C", status: .normal)
+                        ParameterTileView(name: "Sevo%", value: "—", unit: "%", status: .normal)
+                        ParameterTileView(name: "O₂ Flow", value: "—", unit: "L/min", status: .normal)
 
-            Spacer()
-
-            // Bottom bar — Save disabled (no values yet) + End Anesthesia
-            HStack(spacing: 16) {
-                // Save button — disabled at start
-                Button(action: {}) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "square.and.arrow.down.fill")
-                        Text("Save")
-                            .fontWeight(.semibold)
+                        ParameterTileView(name: "ECG", value: "—", unit: "", status: .normal)
+                        ParameterTileView(name: "CRT", value: "—", unit: "", status: .normal)
+                        ParameterTileView(name: "MM", value: "—", unit: "", status: .normal)
+                        ParameterTileView(name: "Notes", value: "—", unit: "", status: .normal)
                     }
-                    .foregroundColor(.white.opacity(0.4))
-                    .frame(width: 140)
-                    .frame(height: 48)
-                    .background(Color.snapvetAccentPrimary.opacity(0.3))
-                    .cornerRadius(12)
                 }
-                .disabled(true)
-
-                HStack(spacing: 8) {
-                    Image(systemName: "circle.dashed")
-                        .foregroundColor(.snapvetTextTertiary)
-                        .font(.system(size: 16))
-                    Text("Tap a tile to begin")
-                        .font(SnapVetFont.bodySmall)
-                        .foregroundColor(.snapvetTextTertiary)
-                }
+                .padding(16)
 
                 Spacer()
 
-                Button(action: {}) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "stop.circle.fill")
-                        Text("End Anesthesia")
-                            .fontWeight(.semibold)
+                // Bottom bar — Save disabled (no values yet) + End Anesthesia
+                Group {
+                    if isCompact {
+                        VStack(spacing: 12) {
+                            HStack(spacing: 16) {
+                                disabledSaveButton
+                                tapToBeginStatus
+                                Spacer()
+                            }
+                            endAnesthesiaButton
+                        }
+                    } else {
+                        HStack(spacing: 16) {
+                            disabledSaveButton
+                            tapToBeginStatus
+                            Spacer()
+                            endAnesthesiaButton
+                        }
                     }
-                    .foregroundColor(.snapvetAccentAlert)
-                    .frame(width: 200)
-                    .frame(height: 48)
-                    .background(Color.snapvetTileBg)
-                    .cornerRadius(12)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color.snapvetAccentAlert.opacity(0.4), lineWidth: 1)
-                    )
                 }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(Color.snapvetHeaderBg)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .background(Color.snapvetHeaderBg)
+            .background(Color.snapvetPrimaryBg)
         }
-        .background(Color.snapvetPrimaryBg)
+    }
+
+    private var disabledSaveButton: some View {
+        Button(action: {}) {
+            HStack(spacing: 8) {
+                Image(systemName: "square.and.arrow.down.fill")
+                Text("Save")
+                    .fontWeight(.semibold)
+            }
+            .foregroundColor(.white.opacity(0.4))
+            .frame(width: 140)
+            .frame(height: 48)
+            .background(Color.snapvetAccentPrimary.opacity(0.3))
+            .cornerRadius(12)
+        }
+        .disabled(true)
+    }
+
+    private var tapToBeginStatus: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "circle.dashed")
+                .foregroundColor(.snapvetTextTertiary)
+                .font(.system(size: 16))
+            Text("Tap a tile to begin")
+                .font(SnapVetFont.bodySmall)
+                .foregroundColor(.snapvetTextTertiary)
+        }
+    }
+
+    private var endAnesthesiaButton: some View {
+        Button(action: {}) {
+            HStack(spacing: 8) {
+                Image(systemName: "stop.circle.fill")
+                Text("End Anesthesia")
+                    .fontWeight(.semibold)
+            }
+            .foregroundColor(.snapvetAccentAlert)
+            .frame(width: 200)
+            .frame(height: 48)
+            .background(Color.snapvetTileBg)
+            .cornerRadius(12)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color.snapvetAccentAlert.opacity(0.4), lineWidth: 1)
+            )
+        }
     }
 }
 
 // MARK: - Warning Scenario (hypothermia + dropping SpO₂ mid-surgery)
 
 struct WarningMonitoringShowcaseView: View {
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
+
     var body: some View {
-        VStack(spacing: 0) {
-            PatientInfoBarView(
-                patientName: "Bella",
-                weight: "12.4",
-                species: "Dog — Labrador Retriever",
-                elapsedTime: "47:30",
-                batteryLevel: 42
-            )
+        GeometryReader { proxy in
+            let isCompact = isCompactLayout(width: proxy.size.width, sizeClass: horizontalSizeClass)
+            let columns = monitoringGridColumns(for: proxy.size.width, sizeClass: horizontalSizeClass)
 
-            VStack(spacing: 12) {
-                LazyVGrid(
-                    columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 4),
-                    spacing: 12
-                ) {
-                    ParameterTileView(name: "HR", value: "142", unit: "bpm", status: .warning, previousValue: "120")
-                    ParameterTileView(name: "RR", value: "8", unit: "bpm", status: .alert, previousValue: "14")
-                    ParameterTileView(name: "SpO₂", value: "91", unit: "%", status: .alert, previousValue: "96")
-                    ParameterTileView(name: "BP", value: "85/40", unit: "(55)", status: .warning)
+            VStack(spacing: 0) {
+                PatientInfoBarView(
+                    patientName: "Bella",
+                    weight: "12.4",
+                    species: "Dog — Labrador Retriever",
+                    elapsedTime: "47:30",
+                    batteryLevel: 42
+                )
 
-                    ParameterTileView(name: "EtCO₂", value: "52", unit: "mmHg", status: .warning, previousValue: "40")
-                    ParameterTileView(name: "Temp", value: "36.2", unit: "°C", status: .alert, previousValue: "37.1")
-                    ParameterTileView(name: "Sevo%", value: "2.5", unit: "%", status: .normal)
-                    ParameterTileView(name: "O₂ Flow", value: "2.0", unit: "L/min", status: .normal)
+                VStack(spacing: 12) {
+                    LazyVGrid(columns: columns, spacing: 12) {
+                        ParameterTileView(name: "HR", value: "142", unit: "bpm", status: .warning, previousValue: "120")
+                        ParameterTileView(name: "RR", value: "8", unit: "bpm", status: .alert, previousValue: "14")
+                        ParameterTileView(name: "SpO₂", value: "91", unit: "%", status: .alert, previousValue: "96")
+                        ParameterTileView(name: "BP", value: "85/40", unit: "(55)", status: .warning)
 
-                    ParameterTileView(name: "ECG", value: "S.Tachy", unit: "", status: .warning)
-                    ParameterTileView(name: "CRT", value: "> 2s", unit: "", status: .alert)
-                    ParameterTileView(name: "MM", value: "Pale", unit: "", status: .warning)
-                    ParameterTileView(name: "Notes", value: "—", unit: "", status: .normal)
-                }
-            }
-            .padding(16)
+                        ParameterTileView(name: "EtCO₂", value: "52", unit: "mmHg", status: .warning, previousValue: "40")
+                        ParameterTileView(name: "Temp", value: "36.2", unit: "°C", status: .alert, previousValue: "37.1")
+                        ParameterTileView(name: "Sevo%", value: "2.5", unit: "%", status: .normal)
+                        ParameterTileView(name: "O₂ Flow", value: "2.0", unit: "L/min", status: .normal)
 
-            Spacer()
-
-            // Bottom bar — Save with 5-min nudge glow + warning status + End Anesthesia
-            HStack(spacing: 16) {
-                // Save button — nudge glow (warning border to draw attention)
-                Button(action: {}) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "square.and.arrow.down.fill")
-                        Text("Save")
-                            .fontWeight(.semibold)
+                        ParameterTileView(name: "ECG", value: "S.Tachy", unit: "", status: .warning)
+                        ParameterTileView(name: "CRT", value: "> 2s", unit: "", status: .alert)
+                        ParameterTileView(name: "MM", value: "Pale", unit: "", status: .warning)
+                        ParameterTileView(name: "Notes", value: "—", unit: "", status: .normal)
                     }
-                    .foregroundColor(.white)
-                    .frame(width: 140)
-                    .frame(height: 48)
-                    .background(Color.snapvetAccentPrimary)
-                    .cornerRadius(12)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color.snapvetAccentWarning, lineWidth: 2)
-                    )
                 }
-
-                HStack(spacing: 8) {
-                    Image(systemName: "exclamationmark.circle.fill")
-                        .foregroundColor(.snapvetAccentWarning)
-                        .font(.system(size: 16))
-                    Text("Last saved 6m ago")
-                        .font(SnapVetFont.bodySmall)
-                        .foregroundColor(.snapvetAccentWarning)
-                }
+                .padding(16)
 
                 Spacer()
 
-                Button(action: {}) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "stop.circle.fill")
-                        Text("End Anesthesia")
-                            .fontWeight(.semibold)
+                // Bottom bar — Save with 5-min nudge glow + warning status + End Anesthesia
+                Group {
+                    if isCompact {
+                        VStack(spacing: 12) {
+                            HStack(spacing: 16) {
+                                saveWithNudgeButton
+                                warningStatus
+                                Spacer()
+                            }
+                            endAnesthesiaButton
+                        }
+                    } else {
+                        HStack(spacing: 16) {
+                            saveWithNudgeButton
+                            warningStatus
+                            Spacer()
+                            endAnesthesiaButton
+                        }
                     }
-                    .foregroundColor(.snapvetAccentAlert)
-                    .frame(width: 200)
-                    .frame(height: 48)
-                    .background(Color.snapvetTileBg)
-                    .cornerRadius(12)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 12)
-                            .stroke(Color.snapvetAccentAlert.opacity(0.4), lineWidth: 1)
-                    )
                 }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .background(Color.snapvetHeaderBg)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .background(Color.snapvetHeaderBg)
+            .background(Color.snapvetPrimaryBg)
         }
-        .background(Color.snapvetPrimaryBg)
+    }
+
+    private var saveWithNudgeButton: some View {
+        Button(action: {}) {
+            HStack(spacing: 8) {
+                Image(systemName: "square.and.arrow.down.fill")
+                Text("Save")
+                    .fontWeight(.semibold)
+            }
+            .foregroundColor(.white)
+            .frame(width: 140)
+            .frame(height: 48)
+            .background(Color.snapvetAccentPrimary)
+            .cornerRadius(12)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color.snapvetAccentWarning, lineWidth: 2)
+            )
+        }
+    }
+
+    private var warningStatus: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "exclamationmark.circle.fill")
+                .foregroundColor(.snapvetAccentWarning)
+                .font(.system(size: 16))
+            Text("Last saved 6m ago")
+                .font(SnapVetFont.bodySmall)
+                .foregroundColor(.snapvetAccentWarning)
+        }
+    }
+
+    private var endAnesthesiaButton: some View {
+        Button(action: {}) {
+            HStack(spacing: 8) {
+                Image(systemName: "stop.circle.fill")
+                Text("End Anesthesia")
+                    .fontWeight(.semibold)
+            }
+            .foregroundColor(.snapvetAccentAlert)
+            .frame(width: 200)
+            .frame(height: 48)
+            .background(Color.snapvetTileBg)
+            .cornerRadius(12)
+            .overlay(
+                RoundedRectangle(cornerRadius: 12)
+                    .stroke(Color.snapvetAccentAlert.opacity(0.4), lineWidth: 1)
+            )
+        }
     }
 }
 
@@ -426,4 +511,26 @@ struct WarningMonitoringShowcaseView: View {
 #Preview("4. Full Showcase — Portrait") {
     DesignSystemShowcaseView()
         .previewDevice("iPad Pro (11-inch) (4th generation)")
+}
+
+#Preview("5. iPhone Portrait") {
+    DesignSystemShowcaseView()
+        .previewDevice("iPhone 15 Pro")
+}
+
+private func isCompactLayout(width: CGFloat, sizeClass: UserInterfaceSizeClass?) -> Bool {
+    if sizeClass == .compact { return true }
+    return width < 700
+}
+
+private func monitoringGridColumns(for width: CGFloat, sizeClass: UserInterfaceSizeClass?) -> [GridItem] {
+    let count: Int
+    if sizeClass == .compact || width < 700 {
+        count = 2
+    } else if width < 900 {
+        count = 3
+    } else {
+        count = 4
+    }
+    return Array(repeating: GridItem(.flexible(), spacing: 12), count: count)
 }

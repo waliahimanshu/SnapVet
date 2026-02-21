@@ -36,40 +36,56 @@ struct MonitoringScreen: View {
     var onEndSession: () -> Void = {}
     @State private var selectedField: VitalField? = nil
     @State private var keypadValue: String = ""
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     private var current: VitalsInput { viewModel.state.currentVitals }
     private var last: VitalRecord? { viewModel.state.lastSaved }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 12) {
-                Group {
-                    tile(.hr, value: current.hr?.intValue.description, previous: last?.hr?.intValue.description)
-                    tile(.rr, value: current.rr?.intValue.description, previous: last?.rr?.intValue.description)
-                    tile(.spo2, value: current.spo2?.intValue.description, previous: last?.spo2?.intValue.description)
-                    tile(.etco2, value: current.etco2?.intValue.description, previous: last?.etco2?.intValue.description)
-                    tile(.bpSys, value: current.bpSys?.intValue.description, previous: last?.bpSys?.intValue.description)
-                    tile(.bpDia, value: current.bpDia?.intValue.description, previous: last?.bpDia?.intValue.description)
-                    tile(.bpMap, value: current.bpMap?.intValue.description, previous: last?.bpMap?.intValue.description)
-                    tile(.temp, value: current.temp?.doubleValue.description, previous: last?.temp?.doubleValue.description)
-                    tile(.sevoIso, value: current.sevoIso?.doubleValue.description, previous: last?.sevoIso?.doubleValue.description)
-                    tile(.o2Flow, value: current.o2Flow?.doubleValue.description, previous: last?.o2Flow?.doubleValue.description)
-                    tile(.ecg, value: current.ecg?.name, previous: last?.ecg?.name)
-                    tile(.crt, value: current.crt?.name, previous: last?.crt?.name)
-                    tile(.mm, value: current.mucousMembrane?.name, previous: last?.mucousMembrane?.name)
-                    tile(.notes, value: current.notes, previous: last?.notes)
-                }
+        GeometryReader { proxy in
+            let isCompact = isCompactLayout(width: proxy.size.width, sizeClass: horizontalSizeClass)
+            let columns = monitoringGridColumns(for: proxy.size.width, sizeClass: horizontalSizeClass)
 
-                HStack(spacing: 12) {
-                    Button("Save Vitals") { viewModel.save() }
-                        .buttonStyle(.borderedProminent)
+            ScrollView {
+                VStack(spacing: 12) {
+                    LazyVGrid(columns: columns, spacing: 12) {
+                        tile(.hr, value: current.hr?.intValue.description, previous: last?.hr?.intValue.description)
+                        tile(.rr, value: current.rr?.intValue.description, previous: last?.rr?.intValue.description)
+                        tile(.spo2, value: current.spo2?.intValue.description, previous: last?.spo2?.intValue.description)
+                        tile(.etco2, value: current.etco2?.intValue.description, previous: last?.etco2?.intValue.description)
+                        tile(.bpSys, value: current.bpSys?.intValue.description, previous: last?.bpSys?.intValue.description)
+                        tile(.bpDia, value: current.bpDia?.intValue.description, previous: last?.bpDia?.intValue.description)
+                        tile(.bpMap, value: current.bpMap?.intValue.description, previous: last?.bpMap?.intValue.description)
+                        tile(.temp, value: current.temp?.doubleValue.description, previous: last?.temp?.doubleValue.description)
+                        tile(.sevoIso, value: current.sevoIso?.doubleValue.description, previous: last?.sevoIso?.doubleValue.description)
+                        tile(.o2Flow, value: current.o2Flow?.doubleValue.description, previous: last?.o2Flow?.doubleValue.description)
+                        tile(.ecg, value: current.ecg?.name, previous: last?.ecg?.name)
+                        tile(.crt, value: current.crt?.name, previous: last?.crt?.name)
+                        tile(.mm, value: current.mucousMembrane?.name, previous: last?.mucousMembrane?.name)
+                        tile(.notes, value: current.notes, previous: last?.notes)
+                    }
 
-                    Button("End Session") { onEndSession() }
-                        .buttonStyle(.bordered)
+                    Group {
+                        if isCompact {
+                            VStack(spacing: 8) {
+                                Button("Save Vitals") { viewModel.save() }
+                                    .buttonStyle(.borderedProminent)
+                                Button("End Session") { onEndSession() }
+                                    .buttonStyle(.bordered)
+                            }
+                        } else {
+                            HStack(spacing: 12) {
+                                Button("Save Vitals") { viewModel.save() }
+                                    .buttonStyle(.borderedProminent)
+                                Button("End Session") { onEndSession() }
+                                    .buttonStyle(.bordered)
+                            }
+                        }
+                    }
+                    .padding(.top, 8)
                 }
-                .padding(.top, 8)
+                .padding(16)
             }
-            .padding(16)
         }
         .sheet(item: $selectedField) { field in
             NumericKeypadView(
@@ -125,6 +141,23 @@ struct MonitoringScreen: View {
             notes: current.notes
         )
         viewModel.updateVitals(updated)
+    }
+
+    private func isCompactLayout(width: CGFloat, sizeClass: UserInterfaceSizeClass?) -> Bool {
+        if sizeClass == .compact { return true }
+        return width < 700
+    }
+
+    private func monitoringGridColumns(for width: CGFloat, sizeClass: UserInterfaceSizeClass?) -> [GridItem] {
+        let count: Int
+        if sizeClass == .compact || width < 700 {
+            count = 2
+        } else if width < 900 {
+            count = 3
+        } else {
+            count = 4
+        }
+        return Array(repeating: GridItem(.flexible(), spacing: 12), count: count)
     }
 }
 
