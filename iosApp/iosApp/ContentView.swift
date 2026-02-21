@@ -3,11 +3,24 @@ import Shared
 
 struct ContentView: View {
     @StateObject private var appState = AppState()
+    @AppStorage("snapvet_appearance_mode") private var appearanceModeRawValue = AppAppearance.dark.rawValue
 
     enum Route: Hashable {
         case caseSetup
         case monitoring
         case caseDetails(String)
+    }
+
+    enum AppAppearance: String {
+        case dark
+        case light
+
+        var colorScheme: ColorScheme {
+            switch self {
+            case .dark: return .dark
+            case .light: return .light
+            }
+        }
     }
 
     @State private var path: [Route] = []
@@ -16,6 +29,8 @@ struct ContentView: View {
         NavigationStack(path: $path) {
             CaseListScreen(
                 viewModel: appState.caseListWrapper,
+                isDarkMode: currentAppearance == .dark,
+                onThemeToggle: toggleAppearance,
                 onNewCase: {
                     appState.prepareNewCase()
                     path.append(.caseSetup)
@@ -39,7 +54,7 @@ struct ContentView: View {
                             path = []
                         }
                     )
-                    .navigationBarBackButtonHidden(true)
+                    .toolbar(.visible, for: .navigationBar)
 
                 case .monitoring:
                     if let monitoring = appState.monitoringWrapper {
@@ -48,15 +63,18 @@ struct ContentView: View {
                             patientName: appState.activeCase?.patientName ?? "",
                             species: appState.activeCase?.species.name ?? "",
                             weight: appState.activeCase?.weight.description ?? "",
-                            onExit: {
-                                path = []
+                            onDiscardSession: {
+                                Task {
+                                    await appState.discardActiveSession()
+                                    path = []
+                                }
                             },
                             onEndSession: {
                                 appState.endSession()
                                 path = []
                             }
                         )
-                        .navigationBarBackButtonHidden(true)
+                        .toolbar(.visible, for: .navigationBar)
                     }
 
                 case .caseDetails(let caseId):
@@ -68,7 +86,6 @@ struct ContentView: View {
                         RecordTableScreen(
                             viewModel: records,
                             caseInfo: selectedCase,
-                            onBackToCases: { path = [] },
                             onDeleteCase: {
                                 Task {
                                     await appState.deleteCase(caseId: selectedCase.id)
@@ -76,12 +93,22 @@ struct ContentView: View {
                                 }
                             }
                         )
-                        .navigationBarBackButtonHidden(true)
+                        .toolbar(.visible, for: .navigationBar)
                     }
                 }
             }
         }
         .background(Color.snapvetPrimaryBg)
+        .tint(.snapvetAccentPrimary)
+        .preferredColorScheme(currentAppearance.colorScheme)
+    }
+
+    private var currentAppearance: AppAppearance {
+        AppAppearance(rawValue: appearanceModeRawValue) ?? .dark
+    }
+
+    private func toggleAppearance() {
+        appearanceModeRawValue = currentAppearance == .dark ? AppAppearance.light.rawValue : AppAppearance.dark.rawValue
     }
 }
 

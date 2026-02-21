@@ -1,8 +1,11 @@
 import SwiftUI
 import Shared
+import UIKit
 
 struct CaseListScreen: View {
     @ObservedObject var viewModel: CaseListViewModelWrapper
+    var isDarkMode: Bool = true
+    var onThemeToggle: () -> Void = {}
     var onNewCase: () -> Void = {}
     var onCaseSelected: (Case) -> Void = { _ in }
 
@@ -17,6 +20,7 @@ struct CaseListScreen: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
+                    themeToggleRow
                     header
 
                     Text("Case History")
@@ -44,6 +48,24 @@ struct CaseListScreen: View {
         }
     }
 
+    private var themeToggleRow: some View {
+        HStack {
+            Spacer()
+            Toggle(
+                "",
+                isOn: Binding(
+                    get: { isDarkMode },
+                    set: { _ in onThemeToggle() }
+                )
+            )
+            .labelsHidden()
+            .tint(.snapvetAccentPrimary)
+            .accessibilityLabel("Theme")
+            .accessibilityValue(isDarkMode ? "Dark" : "Light")
+        }
+        .frame(maxWidth: .infinity, alignment: .trailing)
+    }
+
     private var header: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("SnapVet")
@@ -68,8 +90,6 @@ struct CaseListScreen: View {
                         .foregroundColor(.snapvetTextPrimary)
 
                     Spacer()
-
-                    statusChip(status: item.status)
                 }
 
                 Text("\(displaySpecies(item.species))   \(displayWeight(item.weight))   \(item.procedure)")
@@ -89,19 +109,6 @@ struct CaseListScreen: View {
             .snapVetGlassCard(cornerRadius: 18)
         }
         .buttonStyle(.plain)
-    }
-
-    private func statusChip(status: CaseStatus) -> some View {
-        let isCompleted = status.name == "COMPLETED"
-        return Text(isCompleted ? "completed" : "active")
-            .font(SnapVetFont.labelMedium.weight(.semibold))
-            .foregroundColor(isCompleted ? .snapvetTextPrimary : .snapvetPrimaryBg)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .background(
-                Capsule()
-                    .fill(isCompleted ? Color.snapvetTextTertiary.opacity(0.35) : Color.snapvetAccentPrimary)
-            )
     }
 
     private var emptyState: some View {
@@ -153,23 +160,24 @@ struct CaseListScreen: View {
 
 private struct FloatingNewCaseButton: View {
     let action: () -> Void
+    private var isPad: Bool { UIDevice.current.userInterfaceIdiom == .pad }
+    private var buttonSize: CGFloat { isPad ? 74 : 58 }
+    private var iconSize: CGFloat { isPad ? 28 : 22 }
 
     var body: some View {
         Button(action: action) {
             Image(systemName: "plus")
-                .font(.system(size: 21, weight: .bold))
-                .frame(width: 58, height: 58)
-                .foregroundColor(.white)
-                .background(
-                    Circle()
-                        .fill(Color.snapvetAccentPrimary)
-                )
+                .font(.system(size: iconSize, weight: .bold))
+                .frame(width: buttonSize, height: buttonSize)
+                .foregroundColor(.snapvetAccentPrimary)
+                .floatingGlassCircleBackground()
                 .overlay(
                     Circle()
-                        .stroke(Color.white.opacity(0.25), lineWidth: 1)
+                        .stroke(Color.white.opacity(0.28), lineWidth: 1)
                 )
-                .shadow(color: .black.opacity(0.35), radius: 10, x: 0, y: 6)
+                .shadow(color: .black.opacity(0.18), radius: isPad ? 14 : 10, x: 0, y: isPad ? 8 : 6)
         }
+        .buttonStyle(.plain)
         .accessibilityLabel("New Case")
     }
 }
@@ -178,7 +186,7 @@ private extension DateFormatter {
     static let snapvetCaseDate: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
-        formatter.timeStyle = .none
+        formatter.timeStyle = .short
         return formatter
     }()
 }
@@ -214,6 +222,32 @@ private extension View {
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .stroke(Color.snapvetBorderSubtle, lineWidth: 1)
+            )
+#endif
+    }
+
+    @ViewBuilder
+    func floatingGlassCircleBackground() -> some View {
+#if swift(>=6.2)
+        if #available(iOS 26.0, *) {
+            self
+                .background(
+                    Circle()
+                        .fill(Color.clear)
+                        .glassEffect(.regular, in: Circle())
+                )
+        } else {
+            self
+                .background(
+                    Circle()
+                        .fill(.ultraThinMaterial)
+                )
+        }
+#else
+        self
+            .background(
+                Circle()
+                    .fill(.ultraThinMaterial)
             )
 #endif
     }

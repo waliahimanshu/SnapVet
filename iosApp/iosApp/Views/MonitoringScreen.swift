@@ -1,5 +1,6 @@
 import SwiftUI
 import Shared
+import UIKit
 
 private enum NumericField: String, CaseIterable, Identifiable {
     case hr = "HR"
@@ -45,11 +46,13 @@ struct MonitoringScreen: View {
     var patientName: String
     var species: String
     var weight: String
-    var onExit: () -> Void = {}
+    var onDiscardSession: () -> Void = {}
     var onEndSession: () -> Void = {}
 
     @State private var selectedField: NumericField?
     @State private var keypadValue: String = ""
+    @State private var shouldReplaceOnNextInput = false
+    @State private var showDiscardConfirm = false
     @State private var showEndConfirm = false
 
     private var state: MonitoringState { viewModel.state }
@@ -70,6 +73,7 @@ struct MonitoringScreen: View {
 
                 ScrollView {
                     VStack(spacing: 14) {
+                        topActionsRow
                         header
 
                         if isWide {
@@ -100,25 +104,80 @@ struct MonitoringScreen: View {
         .safeAreaInset(edge: .bottom) {
             saveBar
         }
-        .sheet(item: $selectedField) { field in
+        .sheet(item: $selectedField, onDismiss: {
+            shouldReplaceOnNextInput = false
+        }) { field in
             NumericKeypadView(
-                currentValue: keypadValue,
+                currentValue: $keypadValue,
                 unitLabel: field.unit,
-                onNumberTap: { keypadValue.append($0) },
+                onNumberTap: { number in
+                    feedbackSelection()
+                    if shouldReplaceOnNextInput {
+                        keypadValue = number
+                        shouldReplaceOnNextInput = false
+                    } else {
+                        keypadValue.append(number)
+                    }
+                },
                 onDecimalTap: {
-                    guard field.allowsDecimal, !keypadValue.contains(".") else { return }
+                    guard field.allowsDecimal else { return }
+                    if shouldReplaceOnNextInput {
+                        feedbackSelection()
+                        keypadValue = "0."
+                        shouldReplaceOnNextInput = false
+                        return
+                    }
+                    guard !keypadValue.contains(".") else { return }
+                    feedbackSelection()
                     keypadValue.append(".")
                 },
-                onBackspaceTap: { if !keypadValue.isEmpty { keypadValue.removeLast() } },
+                onBackspaceTap: {
+                    feedbackSelection()
+                    shouldReplaceOnNextInput = false
+                    if !keypadValue.isEmpty {
+                        keypadValue.removeLast()
+                    }
+                },
                 onConfirm: {
+                    feedbackSaveAction()
                     applyNumeric(field: field, value: keypadValue)
+                    shouldReplaceOnNextInput = false
                     selectedField = nil
                 },
-                onClear: { keypadValue = "" },
-                onCancel: { selectedField = nil }
+                onClear: {
+                    feedbackSelection()
+                    keypadValue = ""
+                    shouldReplaceOnNextInput = false
+                },
+                onCancel: {
+                    shouldReplaceOnNextInput = false
+                    selectedField = nil
+                }
             )
             .padding(12)
             .background(Color.snapvetPrimaryBg)
+        }
+        .navigationBarBackButtonHidden(true)
+        .toolbar {
+            ToolbarItem(placement: .topBarLeading) {
+                Button(action: { showDiscardConfirm = true }) {
+                    Image(systemName: "chevron.backward")
+                        .font(.system(size: 17, weight: .semibold))
+                }
+                .accessibilityLabel("Back")
+            }
+        }
+        .confirmationDialog(
+            "Discard session?",
+            isPresented: $showDiscardConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Discard", role: .destructive) {
+                onDiscardSession()
+            }
+            Button("Keep Monitoring", role: .cancel) {}
+        } message: {
+            Text("If you go back now, this active session will be discarded and cannot be resumed.")
         }
         .alert("End anesthesia session?", isPresented: $showEndConfirm) {
             Button("Cancel", role: .cancel) {}
@@ -128,40 +187,10 @@ struct MonitoringScreen: View {
         } message: {
             Text("This marks the case as completed. You can still view records from Case History.")
         }
-        .navigationBarBackButtonHidden(true)
     }
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Button(action: onExit) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "arrow.left")
-                        Text("Exit")
-                    }
-                    .foregroundColor(.snapvetTextSecondary)
-                    .font(SnapVetFont.titleMedium.weight(.semibold))
-                }
-
-                Spacer()
-
-                Button(action: { showEndConfirm = true }) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "stop.circle")
-                        Text("End Anesthesia")
-                    }
-                    .font(SnapVetFont.titleMedium.weight(.semibold))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 14)
-                    .frame(height: 44)
-                    .background(
-                        RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(Color.snapvetAccentAlert)
-                    )
-                }
-                .buttonStyle(.plain)
-            }
-
             HStack(alignment: .bottom) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(patientName.isEmpty ? "Unnamed Case" : patientName)
@@ -189,6 +218,31 @@ struct MonitoringScreen: View {
         .snapVetGlassCard(cornerRadius: 20)
     }
 
+    private var topActionsRow: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Spacer()
+
+                Button(action: { showEndConfirm = true }) {
+                    HStack(spacing: 8) {
+                        Image(systemName: "stop.circle")
+                        Text("End Anesthesia")
+                    }
+                    .font(SnapVetFont.titleMedium.weight(.semibold))
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 14)
+                    .frame(height: 44)
+                    .background(
+                        RoundedRectangle(cornerRadius: 12, style: .continuous)
+                            .fill(Color.snapvetAccentAlert)
+                    )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .trailing)
+    }
+
     private func vitalsGrid(columns: Int) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Vital Parameters")
@@ -204,7 +258,10 @@ struct MonitoringScreen: View {
                         status: status(for: field),
                         previousValue: previousValue(for: field)
                     ) {
-                        keypadValue = rawFieldValue(for: field)
+                        feedbackSelection()
+                        let existingValue = rawFieldValue(for: field)
+                        keypadValue = existingValue
+                        shouldReplaceOnNextInput = !existingValue.isEmpty
                         selectedField = field
                     }
                 }
@@ -394,7 +451,10 @@ struct MonitoringScreen: View {
 
     private var saveBar: some View {
         VStack(spacing: 6) {
-            Button(action: { viewModel.save() }) {
+            Button(action: {
+                feedbackSaveAction()
+                viewModel.save()
+            }) {
                 HStack(spacing: 8) {
                     Image(systemName: "square.and.arrow.down")
                     Text(state.isSaving ? "Saving..." : "Save Entry")
@@ -582,6 +642,16 @@ struct MonitoringScreen: View {
             return "\(Int(value))"
         }
         return String(format: "%.1f", value)
+    }
+
+    private func feedbackSelection() {
+        let generator = UISelectionFeedbackGenerator()
+        generator.selectionChanged()
+    }
+
+    private func feedbackSaveAction() {
+        let generator = UIImpactFeedbackGenerator(style: .medium)
+        generator.impactOccurred()
     }
 
     private func displaySpecies(_ value: String) -> String {

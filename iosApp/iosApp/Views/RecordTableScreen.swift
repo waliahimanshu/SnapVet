@@ -4,7 +4,6 @@ import Shared
 struct RecordTableScreen: View {
     @ObservedObject var viewModel: RecordTableViewModelWrapper
     let caseInfo: Case
-    var onBackToCases: () -> Void = {}
     var onDeleteCase: () -> Void = {}
 
     @State private var showExportInfo = false
@@ -59,21 +58,11 @@ struct RecordTableScreen: View {
         } message: {
             Text("This permanently removes the case and all vital records.")
         }
-        .navigationBarBackButtonHidden(true)
     }
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Button(action: onBackToCases) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "arrow.left")
-                        Text("Back to Cases")
-                    }
-                    .font(SnapVetFont.titleMedium.weight(.semibold))
-                    .foregroundColor(.snapvetTextSecondary)
-                }
-
                 Spacer()
 
                 HStack(spacing: 8) {
@@ -218,16 +207,19 @@ struct RecordTableScreen: View {
             .frame(width: width, alignment: .leading)
     }
 
+    @ViewBuilder
     private var statusChip: some View {
-        Text(caseInfo.status.name == "COMPLETED" ? "completed" : "active")
-            .font(SnapVetFont.labelMedium.weight(.semibold))
-            .foregroundColor(caseInfo.status.name == "COMPLETED" ? .snapvetTextPrimary : .snapvetPrimaryBg)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 4)
-            .background(
-                Capsule()
-                    .fill(caseInfo.status.name == "COMPLETED" ? Color.snapvetTextTertiary.opacity(0.35) : Color.snapvetAccentPrimary)
-            )
+        if caseInfo.status.name == "COMPLETED" {
+            Text("completed")
+                .font(SnapVetFont.labelMedium.weight(.semibold))
+                .foregroundColor(.snapvetTextPrimary)
+                .padding(.horizontal, 10)
+                .padding(.vertical, 4)
+                .background(
+                    Capsule()
+                        .fill(Color.snapvetTextTertiary.opacity(0.35))
+                )
+        }
     }
 
     private var durationText: String {

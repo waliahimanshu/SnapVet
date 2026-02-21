@@ -164,20 +164,10 @@ struct CaseSetupScreen: View {
                 onCaseCreated(created)
             }
         }
-        .navigationBarBackButtonHidden(true)
     }
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Button(action: onCancel) {
-                HStack(spacing: 8) {
-                    Image(systemName: "arrow.left")
-                    Text("Back")
-                }
-                .font(SnapVetFont.titleMedium.weight(.semibold))
-                .foregroundColor(.snapvetTextSecondary)
-            }
-
             Text("New Anesthesia Case")
                 .font(SnapVetFont.headlineLarge)
                 .foregroundColor(.snapvetTextPrimary)

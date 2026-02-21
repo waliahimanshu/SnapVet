@@ -101,6 +101,11 @@ final class AppState: ObservableObject {
         }
     }
 
+    func discardActiveSession() async {
+        guard let caseId = activeCaseId else { return }
+        await deleteCase(caseId: caseId)
+    }
+
     func deleteCase(caseId: String) async {
         _ = try? await deleteCaseUsecase.invoke(caseId: caseId)
 
