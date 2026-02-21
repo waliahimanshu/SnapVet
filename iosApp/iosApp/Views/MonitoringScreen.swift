@@ -144,7 +144,7 @@ struct MonitoringScreen: View {
     }
 
     private var stateElapsedSeconds: Int64 {
-        viewModel.state.elapsedSeconds.int64Value
+        viewModel.state.elapsedSeconds
     }
 
     private var saveStatusText: String {
