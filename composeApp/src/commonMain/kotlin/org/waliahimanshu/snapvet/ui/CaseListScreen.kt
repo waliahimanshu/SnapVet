@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import com.snapvet.domain.model.Case
 import com.snapvet.domain.model.Species
 import com.snapvet.viewmodel.CaseListViewModel
+import kotlinx.datetime.Instant
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 
@@ -51,7 +52,8 @@ private fun displayWeight(value: Double): String {
 }
 
 private fun formatDateTime(caseInfo: Case): String {
-    val dateTime = caseInfo.startTime.toLocalDateTime(TimeZone.currentSystemDefault())
+    val timestamp = Instant.fromEpochMilliseconds(caseInfo.startTime.toEpochMilliseconds())
+    val dateTime = timestamp.toLocalDateTime(TimeZone.currentSystemDefault())
     val month = dateTime.month.name.lowercase().replaceFirstChar { it.uppercase() }
     return "${month} ${dateTime.dayOfMonth}, ${dateTime.year} ${dateTime.hour.toString().padStart(2, '0')}:${dateTime.minute.toString().padStart(2, '0')}"
 }

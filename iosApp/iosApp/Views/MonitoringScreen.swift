@@ -41,6 +41,11 @@ private struct ObservationOption: Identifiable {
     let label: String
 }
 
+private struct SnapshotMetric {
+    let label: String
+    let value: String
+}
+
 struct MonitoringScreen: View {
     @ObservedObject var viewModel: MonitoringViewModelWrapper
     var patientName: String
@@ -311,7 +316,8 @@ struct MonitoringScreen: View {
     }
 
     private func snapshotCard(record: VitalRecord, index: Int) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
+        let metrics = snapshotMetrics(for: record)
+        return VStack(alignment: .leading, spacing: 6) {
             HStack {
                 Text("#\(index)")
                     .font(SnapVetFont.titleMedium.weight(.bold))
@@ -324,19 +330,35 @@ struct MonitoringScreen: View {
 
             Divider().background(Color.snapvetDivider)
 
-            Text("ECG: \(displayEnum(record.ecg?.name, fallback: "-"))")
-                .font(SnapVetFont.bodySmall)
-                .foregroundColor(.snapvetTextSecondary)
-            Text("CRT: \(displayEnum(record.crt?.name, fallback: "-"))")
-                .font(SnapVetFont.bodySmall)
-                .foregroundColor(.snapvetTextSecondary)
-            Text("MM: \(displayEnum(record.mucousMembrane?.name, fallback: "-"))")
-                .font(SnapVetFont.bodySmall)
-                .foregroundColor(.snapvetTextSecondary)
-            Text("Notes: \(record.notes ?? "-")")
-                .font(SnapVetFont.bodySmall)
-                .foregroundColor(.snapvetTextSecondary)
-                .lineLimit(2)
+            if metrics.isEmpty {
+                Text("No key vitals entered")
+                    .font(SnapVetFont.bodySmall)
+                    .foregroundColor(.snapvetTextTertiary)
+            } else {
+                LazyVGrid(
+                    columns: [
+                        GridItem(.flexible(), spacing: 8, alignment: .leading),
+                        GridItem(.flexible(), spacing: 8, alignment: .leading)
+                    ],
+                    alignment: .leading,
+                    spacing: 6
+                ) {
+                    ForEach(Array(metrics.enumerated()), id: \.offset) { _, metric in
+                        Text("\(metric.label) \(metric.value)")
+                            .font(SnapVetFont.bodySmall.weight(.semibold))
+                            .foregroundColor(.snapvetTextSecondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
+            }
+
+            let notes = record.notes?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            if !notes.isEmpty {
+                Text("Notes: \(notes)")
+                    .font(SnapVetFont.bodySmall)
+                    .foregroundColor(.snapvetTextSecondary)
+                    .lineLimit(2)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
@@ -348,6 +370,46 @@ struct MonitoringScreen: View {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .stroke(Color.snapvetBorderSubtle, lineWidth: 1)
         )
+    }
+
+    private func snapshotMetrics(for record: VitalRecord) -> [SnapshotMetric] {
+        var metrics: [SnapshotMetric] = []
+
+        func append(_ label: String, _ value: String?) {
+            guard let value, !value.isEmpty else { return }
+            metrics.append(SnapshotMetric(label: label, value: value))
+        }
+
+        append("HR", record.hr?.intValue.description)
+        append("RR", record.rr?.intValue.description)
+        append("SpO₂", record.spo2?.intValue.description)
+        append("EtCO₂", record.etco2?.intValue.description)
+        append("BP", snapshotBloodPressure(for: record))
+        append("Temp", formatOptionalDouble(record.temp?.doubleValue))
+        append("Iso/Sevo", formatOptionalDouble(record.sevoIso?.doubleValue))
+        append("O₂", formatOptionalDouble(record.o2Flow?.doubleValue))
+
+        return metrics
+    }
+
+    private func snapshotBloodPressure(for record: VitalRecord) -> String? {
+        let sys = record.bpSys?.intValue
+        let dia = record.bpDia?.intValue
+        let map = record.bpMap?.intValue
+
+        if sys == nil, dia == nil, map == nil {
+            return nil
+        }
+
+        if sys == nil, dia == nil, let map {
+            return "MAP \(map)"
+        }
+
+        let pressure = "\(sys.map(String.init) ?? "-")/\(dia.map(String.init) ?? "-")"
+        if let map {
+            return "\(pressure) (MAP \(map))"
+        }
+        return pressure
     }
 
     private var observationsPanel: some View {
@@ -370,7 +432,7 @@ struct MonitoringScreen: View {
             )
 
             observationRow(
-                title: "CRT",
+                title: "CRT (Capillary Refill Time)",
                 options: [
                     ObservationOption(id: "LESS_THAN_2_SEC", label: "<2s"),
                     ObservationOption(id: "GREATER_THAN_2_SEC", label: ">2s")
@@ -380,7 +442,7 @@ struct MonitoringScreen: View {
             )
 
             observationRow(
-                title: "Mucous Membrane",
+                title: "Mucous Membrane (MM)",
                 options: [
                     ObservationOption(id: "PINK", label: "Pink"),
                     ObservationOption(id: "PALE", label: "Pale"),

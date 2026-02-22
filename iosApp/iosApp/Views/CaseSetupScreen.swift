@@ -8,15 +8,74 @@ struct CaseSetupScreen: View {
 
     @FocusState private var focusedField: Field?
     @State private var didAttemptSubmit = false
+    @State private var premedSelections: Set<String> = []
+    @State private var anticholinergicSelection: String?
+    @State private var inductionSelection: String?
+    @State private var maintenanceSelection: String?
+    @State private var oxygenCarrierSelection: String?
+    @State private var analgesiaSelections: Set<String> = []
 
     private enum Field {
         case name
         case weight
-        case procedure
-        case protocolField
     }
 
     private var state: CaseSetupState { viewModel.state }
+
+    private let procedureOptions = [
+        "Spay (OVH / OHE)",
+        "Neuter (castration)",
+        "Dental scale & polish",
+        "Dental extraction",
+        "Lump / mass removal",
+        "Wound repair",
+        "Laceration suturing",
+        "Abscess drainage",
+        "C-section",
+        "Exploratory laparotomy",
+        "Orthopaedic (TPLO, fracture repair)",
+        "Endoscopy",
+        "Imaging under GA (CT / MRI)"
+    ]
+
+    private let premedicationOptions = [
+        "Medetomidine",
+        "Dexmedetomidine",
+        "Acepromazine",
+        "Methadone",
+        "Buprenorphine",
+        "Butorphanol"
+    ]
+
+    private let anticholinergicOptions = [
+        "Atropine",
+        "Glycopyrrolate"
+    ]
+
+    private let inductionOptions = [
+        "Propofol",
+        "Alfaxalone",
+        "Ketamine + benzodiazepine",
+        "Mask induction (cats)"
+    ]
+
+    private let maintenanceOptions = [
+        "Isoflurane",
+        "Sevoflurane",
+        "TIVA (Propofol CRI)"
+    ]
+
+    private let oxygenCarrierOptions = [
+        "Oxygen only",
+        "Oxygen + Air"
+    ]
+
+    private let analgesiaAddOnOptions = [
+        "NSAID (Meloxicam / Carprofen)",
+        "Local block",
+        "Epidural",
+        "CRI (Fentanyl / Ketamine)"
+    ]
 
     var body: some View {
         ZStack {
@@ -89,27 +148,123 @@ struct CaseSetupScreen: View {
                             title: "Procedure *",
                             error: shouldShowProcedureError ? "Procedure is required" : nil
                         ) {
-                            TextField(
-                                "e.g., Dental cleaning, Spay, Neuter",
-                                text: Binding(
-                                    get: { state.procedure },
-                                    set: { viewModel.updateProcedure($0) }
+                            Menu {
+                                Section("Small Animal – Common") {
+                                    ForEach(procedureOptions, id: \.self) { option in
+                                        Button(option) { viewModel.updateProcedure(option) }
+                                    }
+                                }
+                            } label: {
+                                dropdownLabel(
+                                    text: state.procedure.isEmpty ? "Select procedure type" : state.procedure,
+                                    isPlaceholder: state.procedure.isEmpty
                                 )
-                            )
-                            .focused($focusedField, equals: .procedure)
-                            .snapvetFormFieldStyle()
+                            }
                         }
 
                         labelledField(title: "Anesthetic Protocol") {
-                            TextField(
-                                "Optional protocol details",
-                                text: Binding(
-                                    get: { state.anestheticProtocol },
-                                    set: { viewModel.updateAnestheticProtocol($0) }
-                                )
-                            )
-                            .focused($focusedField, equals: .protocolField)
-                            .snapvetFormFieldStyle()
+                            VStack(alignment: .leading, spacing: 10) {
+                                Menu {
+                                    ForEach(premedicationOptions, id: \.self) { option in
+                                        Button {
+                                            togglePremedication(option)
+                                        } label: {
+                                            Label(option, systemImage: premedSelections.contains(option) ? "checkmark.circle.fill" : "circle")
+                                        }
+                                    }
+                                } label: {
+                                    dropdownLabel(
+                                        text: multiSelectionText(
+                                            selections: premedSelections,
+                                            options: premedicationOptions,
+                                            placeholder: "Premedication"
+                                        ),
+                                        isPlaceholder: premedSelections.isEmpty
+                                    )
+                                }
+
+                                Menu {
+                                    ForEach(anticholinergicOptions, id: \.self) { option in
+                                        Button {
+                                            selectAnticholinergic(option)
+                                        } label: {
+                                            Label(option, systemImage: anticholinergicSelection == option ? "checkmark.circle.fill" : "circle")
+                                        }
+                                    }
+                                    if anticholinergicSelection != nil {
+                                        Divider()
+                                        Button("Clear") { selectAnticholinergic(nil) }
+                                    }
+                                } label: {
+                                    dropdownLabel(
+                                        text: anticholinergicSelection ?? "Atropine / Glycopyrrolate",
+                                        isPlaceholder: anticholinergicSelection == nil
+                                    )
+                                }
+
+                                Menu {
+                                    ForEach(inductionOptions, id: \.self) { option in
+                                        Button(option) { selectInduction(option) }
+                                    }
+                                } label: {
+                                    dropdownLabel(
+                                        text: inductionSelection ?? "Induction",
+                                        isPlaceholder: inductionSelection == nil
+                                    )
+                                }
+
+                                Menu {
+                                    ForEach(maintenanceOptions, id: \.self) { option in
+                                        Button(option) { selectMaintenance(option) }
+                                    }
+                                } label: {
+                                    dropdownLabel(
+                                        text: maintenanceSelection ?? "Maintenance",
+                                        isPlaceholder: maintenanceSelection == nil
+                                    )
+                                }
+
+                                Menu {
+                                    ForEach(oxygenCarrierOptions, id: \.self) { option in
+                                        Button(option) { selectOxygenCarrier(option) }
+                                    }
+                                    if oxygenCarrierSelection != nil {
+                                        Divider()
+                                        Button("Clear") { selectOxygenCarrier(nil) }
+                                    }
+                                } label: {
+                                    dropdownLabel(
+                                        text: oxygenCarrierSelection ?? "Oxygen carrier",
+                                        isPlaceholder: oxygenCarrierSelection == nil
+                                    )
+                                }
+
+                                Menu {
+                                    ForEach(analgesiaAddOnOptions, id: \.self) { option in
+                                        Button {
+                                            toggleAnalgesiaAddOn(option)
+                                        } label: {
+                                            Label(option, systemImage: analgesiaSelections.contains(option) ? "checkmark.circle.fill" : "circle")
+                                        }
+                                    }
+                                } label: {
+                                    dropdownLabel(
+                                        text: multiSelectionText(
+                                            selections: analgesiaSelections,
+                                            options: analgesiaAddOnOptions,
+                                            placeholder: "Analgesia add-ons"
+                                        ),
+                                        isPlaceholder: analgesiaSelections.isEmpty
+                                    )
+                                }
+
+                                if !state.anestheticProtocol.isEmpty {
+                                    Text(state.anestheticProtocol)
+                                        .font(SnapVetFont.bodySmall)
+                                        .foregroundColor(.snapvetTextSecondary)
+                                        .padding(.top, 2)
+                                }
+                            }
                         }
 
                         if let message = state.errorMessage {
@@ -234,6 +389,102 @@ struct CaseSetupScreen: View {
                     .foregroundColor(.snapvetAccentAlert)
             }
         }
+    }
+
+    private func dropdownLabel(text: String, isPlaceholder: Bool) -> some View {
+        HStack {
+            Text(text)
+                .foregroundColor(isPlaceholder ? .snapvetTextTertiary : .snapvetTextPrimary)
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
+            Spacer(minLength: 8)
+            Image(systemName: "chevron.down")
+                .foregroundColor(.snapvetTextSecondary)
+        }
+        .padding(.horizontal, 14)
+        .frame(minHeight: 50)
+        .snapvetFormBackground()
+    }
+
+    private func togglePremedication(_ option: String) {
+        if premedSelections.contains(option) {
+            premedSelections.remove(option)
+        } else {
+            premedSelections.insert(option)
+        }
+        syncAnestheticProtocolText()
+    }
+
+    private func selectAnticholinergic(_ value: String?) {
+        anticholinergicSelection = value
+        syncAnestheticProtocolText()
+    }
+
+    private func selectInduction(_ value: String) {
+        inductionSelection = value
+        syncAnestheticProtocolText()
+    }
+
+    private func selectMaintenance(_ value: String) {
+        maintenanceSelection = value
+        syncAnestheticProtocolText()
+    }
+
+    private func selectOxygenCarrier(_ value: String?) {
+        oxygenCarrierSelection = value
+        syncAnestheticProtocolText()
+    }
+
+    private func toggleAnalgesiaAddOn(_ option: String) {
+        if analgesiaSelections.contains(option) {
+            analgesiaSelections.remove(option)
+        } else {
+            analgesiaSelections.insert(option)
+        }
+        syncAnestheticProtocolText()
+    }
+
+    private func syncAnestheticProtocolText() {
+        var segments: [String] = []
+
+        let orderedPremeds = orderedSelections(from: premedSelections, by: premedicationOptions)
+        if !orderedPremeds.isEmpty || anticholinergicSelection != nil {
+            var items = orderedPremeds
+            if let anticholinergicSelection {
+                items.append(anticholinergicSelection)
+            }
+            segments.append("Premed: " + items.joined(separator: " + "))
+        }
+
+        if let inductionSelection {
+            segments.append("Induction: " + inductionSelection)
+        }
+
+        if let maintenanceSelection {
+            if let oxygenCarrierSelection {
+                segments.append("Maintenance: \(maintenanceSelection) (\(oxygenCarrierSelection))")
+            } else {
+                segments.append("Maintenance: \(maintenanceSelection)")
+            }
+        } else if let oxygenCarrierSelection {
+            segments.append("Carrier: \(oxygenCarrierSelection)")
+        }
+
+        let orderedAnalgesia = orderedSelections(from: analgesiaSelections, by: analgesiaAddOnOptions)
+        if !orderedAnalgesia.isEmpty {
+            segments.append("Analgesia: " + orderedAnalgesia.joined(separator: " + "))
+        }
+
+        viewModel.updateAnestheticProtocol(segments.joined(separator: " | "))
+    }
+
+    private func orderedSelections(from selections: Set<String>, by options: [String]) -> [String] {
+        options.filter { selections.contains($0) }
+    }
+
+    private func multiSelectionText(selections: Set<String>, options: [String], placeholder: String) -> String {
+        let ordered = orderedSelections(from: selections, by: options)
+        return ordered.isEmpty ? placeholder : ordered.joined(separator: " + ")
     }
 }
 

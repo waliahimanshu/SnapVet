@@ -7,10 +7,20 @@ struct RecordTableScreen: View {
     let caseInfo: Case
     var onDeleteCase: () -> Void = {}
 
-    @State private var showShareSheet = false
-    @State private var shareItems: [Any] = []
+    @State private var sharePayload: ShareSheetPayload?
     @State private var exportErrorMessage: String?
     @State private var showDeleteConfirm = false
+
+    private struct IndexedRecord: Identifiable {
+        let index: Int
+        let record: VitalRecord
+        var id: String { record.id }
+    }
+
+    private struct RowCell {
+        let value: String
+        let width: CGFloat
+    }
 
     private let columns: [(String, CGFloat)] = [
         ("#", 42),
@@ -25,8 +35,8 @@ struct RecordTableScreen: View {
         ("Iso", 54),
         ("O₂", 54),
         ("ECG", 94),
-        ("CRT", 84),
-        ("MM", 98),
+        ("CRT", 112),
+        ("Mucous Membrane", 148),
         ("Notes", 220)
     ]
 
@@ -49,47 +59,11 @@ struct RecordTableScreen: View {
                 .padding(.bottom, 20)
             }
         }
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button(action: { showDeleteConfirm = true }) {
-                    Image(systemName: "trash")
-                        .font(SnapVetFont.titleMedium.weight(.bold))
-                        .foregroundColor(.white)
-                        .frame(width: 30, height: 30)
-                        .background(
-                            Circle()
-                                .fill(Color.snapvetAccentAlert)
-                        )
-                }
-                .buttonStyle(.plain)
-                .padding(.leading, 8)
-            }
-
-            ToolbarItem(placement: .topBarTrailing) {
-                Button(action: exportPdf) {
-                    HStack(spacing: 6) {
-                        Image(systemName: "doc")
-                        Text("Export")
-                    }
-                    .font(SnapVetFont.titleMedium.weight(.semibold))
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background(
-                        Capsule()
-                            .fill(Color.snapvetAccentPrimary)
-                    )
-                }
-                .buttonStyle(.plain)
-            }
+        .toolbar { toolbarContent }
+        .sheet(item: $sharePayload) { payload in
+            ShareSheet(activityItems: payload.activityItems)
         }
-        .sheet(isPresented: $showShareSheet) {
-            ShareSheet(activityItems: shareItems)
-        }
-        .alert("Export Failed", isPresented: Binding(
-            get: { exportErrorMessage != nil },
-            set: { if !$0 { exportErrorMessage = nil } }
-        )) {
+        .alert("Export Failed", isPresented: isExportErrorPresented) {
             Button("OK", role: .cancel) {}
         } message: {
             Text(exportErrorMessage ?? "Could not generate PDF.")
@@ -102,6 +76,53 @@ struct RecordTableScreen: View {
         } message: {
             Text("This permanently removes the case and all vital records.")
         }
+    }
+
+    private var isExportErrorPresented: Binding<Bool> {
+        Binding(
+            get: { exportErrorMessage != nil },
+            set: { if !$0 { exportErrorMessage = nil } }
+        )
+    }
+
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .topBarTrailing) {
+            deleteButton
+        }
+        ToolbarItem(placement: .topBarTrailing) {
+            exportButton
+        }
+    }
+
+    private var deleteButton: some View {
+        Button(action: { showDeleteConfirm = true }) {
+            Image(systemName: "trash")
+                .font(SnapVetFont.titleMedium.weight(.bold))
+                .foregroundColor(.white)
+                .frame(width: 30, height: 30)
+                .background(
+                    Circle()
+                        .fill(Color.snapvetAccentAlert)
+                )
+        }
+        .buttonStyle(.plain)
+        .padding(.leading, 8)
+    }
+
+    private var exportButton: some View {
+        Button(action: exportPdf) {
+            Image(systemName: "square.and.arrow.up")
+                .font(SnapVetFont.titleMedium.weight(.bold))
+                .foregroundColor(.white)
+                .frame(width: 30, height: 30)
+                .background(
+                    Circle()
+                        .fill(Color.snapvetAccentPrimary)
+                )
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Export PDF")
     }
 
     private var header: some View {
@@ -119,6 +140,7 @@ struct RecordTableScreen: View {
             .foregroundColor(.snapvetTextSecondary)
         }
         .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .snapVetGlassCard(cornerRadius: 20)
     }
 
@@ -157,8 +179,8 @@ struct RecordTableScreen: View {
                 VStack(spacing: 0) {
                     tableHeader
 
-                    ForEach(Array(viewModel.state.records.enumerated()), id: \.element.id) { index, record in
-                        tableRow(record: record, index: index)
+                    ForEach(indexedRecords) { item in
+                        tableRow(record: item.record, index: item.index)
                     }
                 }
                 .padding(.bottom, 4)
@@ -166,6 +188,12 @@ struct RecordTableScreen: View {
         }
         .padding(16)
         .snapVetGlassCard(cornerRadius: 20)
+    }
+
+    private var indexedRecords: [IndexedRecord] {
+        viewModel.state.records.enumerated().map { offset, record in
+            IndexedRecord(index: offset, record: record)
+        }
     }
 
     private var tableHeader: some View {
@@ -186,22 +214,11 @@ struct RecordTableScreen: View {
     }
 
     private func tableRow(record: VitalRecord, index: Int) -> some View {
-        HStack(spacing: 0) {
-            tableCell("\(viewModel.state.records.count - index)", width: 42)
-            tableCell(formatTime(record.timestamp), width: 96)
-            tableCell(record.hr?.intValue.description ?? "-", width: 58)
-            tableCell(record.rr?.intValue.description ?? "-", width: 58)
-            tableCell(record.spo2?.intValue.description ?? "-", width: 66)
-            tableCell(record.etco2?.intValue.description ?? "-", width: 72)
-            tableCell(record.bpSys?.intValue.description ?? "-", width: 62)
-            tableCell(record.bpDia?.intValue.description ?? "-", width: 62)
-            tableCell(formatDouble(record.temp?.doubleValue), width: 62)
-            tableCell(formatDouble(record.sevoIso?.doubleValue), width: 54)
-            tableCell(formatDouble(record.o2Flow?.doubleValue), width: 54)
-            tableCell(displayEnum(record.ecg?.name), width: 94)
-            tableCell(displayEnum(record.crt?.name), width: 84)
-            tableCell(displayEnum(record.mucousMembrane?.name), width: 98)
-            tableCell(record.notes ?? "-", width: 220)
+        let cells = rowCells(record: record, index: index)
+        return HStack(spacing: 0) {
+            ForEach(Array(cells.enumerated()), id: \.offset) { _, cell in
+                tableCell(cell.value, width: cell.width)
+            }
         }
         .frame(height: 42)
         .overlay(alignment: .bottom) {
@@ -209,6 +226,26 @@ struct RecordTableScreen: View {
                 .fill(Color.snapvetDivider.opacity(0.7))
                 .frame(height: 1)
         }
+    }
+
+    private func rowCells(record: VitalRecord, index: Int) -> [RowCell] {
+        [
+            RowCell(value: "\(viewModel.state.records.count - index)", width: 42),
+            RowCell(value: formatTime(record.timestamp), width: 96),
+            RowCell(value: record.hr?.intValue.description ?? "-", width: 58),
+            RowCell(value: record.rr?.intValue.description ?? "-", width: 58),
+            RowCell(value: record.spo2?.intValue.description ?? "-", width: 66),
+            RowCell(value: record.etco2?.intValue.description ?? "-", width: 72),
+            RowCell(value: record.bpSys?.intValue.description ?? "-", width: 62),
+            RowCell(value: record.bpDia?.intValue.description ?? "-", width: 62),
+            RowCell(value: formatDouble(record.temp?.doubleValue), width: 62),
+            RowCell(value: formatDouble(record.sevoIso?.doubleValue), width: 54),
+            RowCell(value: formatDouble(record.o2Flow?.doubleValue), width: 54),
+            RowCell(value: displayEnum(record.ecg?.name), width: 94),
+            RowCell(value: displayEnum(record.crt?.name), width: 112),
+            RowCell(value: displayEnum(record.mucousMembrane?.name), width: 148),
+            RowCell(value: record.notes ?? "-", width: 220)
+        ]
     }
 
     private func tableCell(_ value: String, width: CGFloat) -> some View {
@@ -283,112 +320,19 @@ struct RecordTableScreen: View {
             let fileName = "SnapVet-\(sanitizedFileName(caseInfo.patientName))-\(DateFormatter.snapvetExportStamp.string(from: Date())).pdf"
             let url = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
             try data.write(to: url, options: .atomic)
-            shareItems = [url]
-            showShareSheet = true
+            sharePayload = ShareSheetPayload(activityItems: [url])
         } catch {
             exportErrorMessage = error.localizedDescription
         }
     }
 
     private func buildPdfData() -> Data {
-        let pageRect = CGRect(x: 0, y: 0, width: 595, height: 842) // A4 @ 72dpi
-        let renderer = UIGraphicsPDFRenderer(bounds: pageRect)
-        let margin: CGFloat = 32
-        let contentWidth = pageRect.width - (margin * 2)
-        let titleAttrs: [NSAttributedString.Key: Any] = [
-            .font: UIFont.boldSystemFont(ofSize: 20),
-            .foregroundColor: UIColor.black
-        ]
-        let headerAttrs: [NSAttributedString.Key: Any] = [
-            .font: UIFont.systemFont(ofSize: 11, weight: .semibold),
-            .foregroundColor: UIColor.darkGray
-        ]
-        let bodyAttrs: [NSAttributedString.Key: Any] = [
-            .font: UIFont.systemFont(ofSize: 11, weight: .regular),
-            .foregroundColor: UIColor.black
-        ]
-
-        return renderer.pdfData { context in
-            var y: CGFloat = 0
-
-            func drawLine(_ text: String, attrs: [NSAttributedString.Key: Any], spacing: CGFloat = 4) {
-                let rect = CGRect(x: margin, y: y, width: contentWidth, height: .greatestFiniteMagnitude)
-                let size = (text as NSString).boundingRect(
-                    with: CGSize(width: rect.width, height: .greatestFiniteMagnitude),
-                    options: [.usesLineFragmentOrigin, .usesFontLeading],
-                    attributes: attrs,
-                    context: nil
-                ).size
-                (text as NSString).draw(
-                    in: CGRect(x: rect.minX, y: rect.minY, width: rect.width, height: ceil(size.height)),
-                    withAttributes: attrs
-                )
-                y += ceil(size.height) + spacing
-            }
-
-            func beginPage(showCaseHeader: Bool) {
-                context.beginPage()
-                y = margin
-                drawLine("SnapVet Vital Records Export", attrs: titleAttrs, spacing: 10)
-                if showCaseHeader {
-                    drawLine("Patient: \(caseInfo.patientName)", attrs: headerAttrs)
-                    drawLine("Species: \(displaySpecies(caseInfo.species))   Weight: \(displayWeight(caseInfo.weight))", attrs: headerAttrs)
-                    drawLine("Procedure: \(caseInfo.procedure)", attrs: headerAttrs)
-                    drawLine("Case Date: \(formatDate(caseInfo.startTime))   Duration: \(durationText)", attrs: headerAttrs)
-                    drawLine("Generated: \(DateFormatter.snapvetExportDateTime.string(from: Date()))", attrs: headerAttrs, spacing: 10)
-                } else {
-                    drawLine("Continued", attrs: headerAttrs, spacing: 10)
-                }
-            }
-
-            beginPage(showCaseHeader: true)
-
-            if viewModel.state.records.isEmpty {
-                drawLine("No vital records saved.", attrs: bodyAttrs)
-                return
-            }
-
-            for (index, record) in viewModel.state.records.enumerated() {
-                let recordNumber = viewModel.state.records.count - index
-                let notes = (record.notes?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false) ? (record.notes ?? "-") : "-"
-                let lines = [
-                    "#\(recordNumber)  \(formatTime(record.timestamp))",
-                    "HR \(record.hr?.intValue.description ?? "-")   RR \(record.rr?.intValue.description ?? "-")   SpO₂ \(record.spo2?.intValue.description ?? "-")   EtCO₂ \(record.etco2?.intValue.description ?? "-")",
-                    "BP \(record.bpSys?.intValue.description ?? "-")/\(record.bpDia?.intValue.description ?? "-")/\(record.bpMap?.intValue.description ?? "-")   Temp \(formatDouble(record.temp?.doubleValue))   Iso \(formatDouble(record.sevoIso?.doubleValue))   O₂ \(formatDouble(record.o2Flow?.doubleValue))",
-                    "ECG \(displayEnum(record.ecg?.name))   CRT \(displayEnum(record.crt?.name))   MM \(displayEnum(record.mucousMembrane?.name))",
-                    "Notes: \(notes)"
-                ]
-
-                var estimatedHeight: CGFloat = 0
-                for line in lines {
-                    let size = (line as NSString).boundingRect(
-                        with: CGSize(width: contentWidth, height: .greatestFiniteMagnitude),
-                        options: [.usesLineFragmentOrigin, .usesFontLeading],
-                        attributes: bodyAttrs,
-                        context: nil
-                    ).size
-                    estimatedHeight += ceil(size.height) + 4
-                }
-                estimatedHeight += 8
-
-                if y + estimatedHeight > pageRect.height - margin {
-                    beginPage(showCaseHeader: false)
-                }
-
-                for line in lines {
-                    drawLine(line, attrs: bodyAttrs)
-                }
-
-                let separatorY = y + 2
-                let separator = UIBezierPath()
-                separator.move(to: CGPoint(x: margin, y: separatorY))
-                separator.addLine(to: CGPoint(x: pageRect.width - margin, y: separatorY))
-                UIColor.lightGray.setStroke()
-                separator.lineWidth = 0.5
-                separator.stroke()
-                y += 8
-            }
-        }
+        let builder = RecordTablePdfBuilder(
+            caseInfo: caseInfo,
+            records: viewModel.state.records,
+            durationText: durationText
+        )
+        return builder.build()
     }
 
     private func sanitizedFileName(_ value: String) -> String {
@@ -399,6 +343,274 @@ struct RecordTableScreen: View {
         let cleaned = compact.unicodeScalars.map { allowed.contains($0) ? Character($0) : "_" }
         let result = String(cleaned)
         return result.isEmpty ? "Case" : result
+    }
+}
+
+private struct ShareSheetPayload: Identifiable {
+    let id = UUID()
+    let activityItems: [Any]
+}
+
+private struct RecordTablePdfBuilder {
+    let caseInfo: Case
+    let records: [VitalRecord]
+    let durationText: String
+
+    private let pageRect = CGRect(x: 0, y: 0, width: 842, height: 595) // A4 landscape @ 72dpi
+    private let margin: CGFloat = 20
+    private let tableHeaderHeight: CGFloat = 22
+    private let minimumRowHeight: CGFloat = 22
+    private let cellPaddingX: CGFloat = 4
+    private let cellPaddingY: CGFloat = 4
+
+    private var contentWidth: CGFloat { pageRect.width - (margin * 2) }
+
+    private var titleAttrs: [NSAttributedString.Key: Any] {
+        [
+            .font: UIFont.boldSystemFont(ofSize: 17),
+            .foregroundColor: UIColor.black
+        ]
+    }
+
+    private var headerAttrs: [NSAttributedString.Key: Any] {
+        [
+            .font: UIFont.systemFont(ofSize: 10, weight: .semibold),
+            .foregroundColor: UIColor.darkGray
+        ]
+    }
+
+    private var bodyAttrs: [NSAttributedString.Key: Any] {
+        [
+            .font: UIFont.systemFont(ofSize: 9, weight: .regular),
+            .foregroundColor: UIColor.black
+        ]
+    }
+
+    private var tableHeaderAttrs: [NSAttributedString.Key: Any] {
+        [
+            .font: UIFont.systemFont(ofSize: 9, weight: .semibold),
+            .foregroundColor: UIColor.black
+        ]
+    }
+
+    private var fixedColumns: [(title: String, width: CGFloat)] {
+        [
+            ("#", 26),
+            ("Time", 72),
+            ("HR", 32),
+            ("RR", 32),
+            ("SpO₂", 38),
+            ("EtCO₂", 44),
+            ("SBP", 36),
+            ("DBP", 36),
+            ("MAP", 36),
+            ("Temp", 40),
+            ("Iso", 34),
+            ("O₂", 34),
+            ("ECG", 64),
+            ("CRT", 56),
+            ("MM", 78)
+        ]
+    }
+
+    private var notesWidth: CGFloat {
+        let fixedTotal = fixedColumns.reduce(0) { $0 + $1.width }
+        return max(120, contentWidth - fixedTotal)
+    }
+
+    private var columnTitles: [String] {
+        fixedColumns.map { $0.title } + ["Notes"]
+    }
+
+    private var columnWidths: [CGFloat] {
+        fixedColumns.map { $0.width } + [notesWidth]
+    }
+
+    func build() -> Data {
+        let renderer = UIGraphicsPDFRenderer(bounds: pageRect)
+        return renderer.pdfData { context in
+            var y: CGFloat = 0
+
+            func textHeight(_ text: String, width: CGFloat, attrs: [NSAttributedString.Key: Any]) -> CGFloat {
+                let size = (text as NSString).boundingRect(
+                    with: CGSize(width: width, height: .greatestFiniteMagnitude),
+                    options: [.usesLineFragmentOrigin, .usesFontLeading],
+                    attributes: attrs,
+                    context: nil
+                ).size
+                return ceil(size.height)
+            }
+
+            func drawParagraph(_ text: String, attrs: [NSAttributedString.Key: Any], spacing: CGFloat = 4) {
+                let rect = CGRect(x: margin, y: y, width: contentWidth, height: .greatestFiniteMagnitude)
+                let size = textHeight(text, width: rect.width, attrs: attrs)
+                (text as NSString).draw(
+                    in: CGRect(x: rect.minX, y: rect.minY, width: rect.width, height: size),
+                    withAttributes: attrs
+                )
+                y += size + spacing
+            }
+
+            func beginPage(showCaseHeader: Bool) {
+                context.beginPage()
+                y = margin
+                drawParagraph("SnapVet Vital Records Export", attrs: titleAttrs, spacing: 8)
+                if showCaseHeader {
+                    drawParagraph("Patient: \(caseInfo.patientName)", attrs: headerAttrs)
+                    drawParagraph("Species: \(displaySpecies(caseInfo.species))   Weight: \(displayWeight(caseInfo.weight))", attrs: headerAttrs)
+                    drawParagraph("Procedure: \(caseInfo.procedure)", attrs: headerAttrs)
+                    drawParagraph("Case Date: \(formatDate(caseInfo.startTime))   Duration: \(durationText)", attrs: headerAttrs)
+                    drawParagraph("Generated: \(DateFormatter.snapvetExportDateTime.string(from: Date()))", attrs: headerAttrs, spacing: 10)
+                } else {
+                    drawParagraph("Continued", attrs: headerAttrs, spacing: 8)
+                }
+            }
+
+            func drawTableHeaderRow() {
+                var x = margin
+                let titles = columnTitles
+                let widths = columnWidths
+                for index in titles.indices {
+                    let width = widths[index]
+                    let title = titles[index]
+                    let cellRect = CGRect(x: x, y: y, width: width, height: tableHeaderHeight)
+                    UIColor(white: 0.94, alpha: 1.0).setFill()
+                    UIBezierPath(rect: cellRect).fill()
+                    UIColor.darkGray.setStroke()
+                    let border = UIBezierPath(rect: cellRect)
+                    border.lineWidth = 0.6
+                    border.stroke()
+
+                    let paragraph = NSMutableParagraphStyle()
+                    paragraph.alignment = .left
+                    paragraph.lineBreakMode = .byTruncatingTail
+                    var attrs = tableHeaderAttrs
+                    attrs[.paragraphStyle] = paragraph
+                    (title as NSString).draw(
+                        in: cellRect.insetBy(dx: cellPaddingX, dy: cellPaddingY),
+                        withAttributes: attrs
+                    )
+                    x += width
+                }
+                y += tableHeaderHeight
+            }
+
+            func rowValues(number: Int, record: VitalRecord) -> [String] {
+                let notes = normalizedNotes(record.notes)
+                return [
+                    "\(number)",
+                    formatTime(record.timestamp),
+                    record.hr?.intValue.description ?? "-",
+                    record.rr?.intValue.description ?? "-",
+                    record.spo2?.intValue.description ?? "-",
+                    record.etco2?.intValue.description ?? "-",
+                    record.bpSys?.intValue.description ?? "-",
+                    record.bpDia?.intValue.description ?? "-",
+                    record.bpMap?.intValue.description ?? "-",
+                    formatDouble(record.temp?.doubleValue),
+                    formatDouble(record.sevoIso?.doubleValue),
+                    formatDouble(record.o2Flow?.doubleValue),
+                    displayEnum(record.ecg?.name),
+                    displayEnum(record.crt?.name),
+                    displayEnum(record.mucousMembrane?.name),
+                    notes
+                ]
+            }
+
+            func drawRecordRow(number: Int, record: VitalRecord) {
+                let values = rowValues(number: number, record: record)
+                let notes = values.last ?? "-"
+                let notesTextWidth = notesWidth - (cellPaddingX * 2)
+                let notesHeight = textHeight(notes, width: notesTextWidth, attrs: bodyAttrs)
+                let rowHeight = max(minimumRowHeight, notesHeight + (cellPaddingY * 2))
+
+                if y + rowHeight > pageRect.height - margin {
+                    beginPage(showCaseHeader: false)
+                    drawTableHeaderRow()
+                }
+
+                var x = margin
+                let widths = columnWidths
+                for index in values.indices {
+                    let width = widths[index]
+                    let value = values[index]
+                    let cellRect = CGRect(x: x, y: y, width: width, height: rowHeight)
+                    UIColor.darkGray.setStroke()
+                    let border = UIBezierPath(rect: cellRect)
+                    border.lineWidth = 0.4
+                    border.stroke()
+
+                    let paragraph = NSMutableParagraphStyle()
+                    paragraph.alignment = .left
+                    paragraph.lineBreakMode = index == values.count - 1 ? .byWordWrapping : .byTruncatingTail
+                    var attrs = bodyAttrs
+                    attrs[.paragraphStyle] = paragraph
+                    (value as NSString).draw(
+                        with: cellRect.insetBy(dx: cellPaddingX, dy: cellPaddingY),
+                        options: [.usesLineFragmentOrigin, .usesFontLeading],
+                        attributes: attrs,
+                        context: nil
+                    )
+                    x += width
+                }
+
+                y += rowHeight
+            }
+
+            beginPage(showCaseHeader: true)
+
+            if records.isEmpty {
+                drawParagraph("No vital records saved.", attrs: bodyAttrs)
+                return
+            }
+
+            drawTableHeaderRow()
+            for index in records.indices {
+                let number = records.count - index
+                drawRecordRow(number: number, record: records[index])
+            }
+        }
+    }
+
+    private func normalizedNotes(_ notes: String?) -> String {
+        guard let notes, !notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return "-"
+        }
+        return notes
+    }
+
+    private func displaySpecies(_ value: Species) -> String {
+        value == .dog ? "Dog" : "Cat"
+    }
+
+    private func displayWeight(_ value: Double) -> String {
+        if value.rounded() == value {
+            return "\(Int(value)) lb"
+        }
+        return String(format: "%.1f lb", value)
+    }
+
+    private func displayEnum(_ raw: String?) -> String {
+        guard let raw else { return "-" }
+        return raw.replacingOccurrences(of: "_", with: " ").lowercased().capitalized
+    }
+
+    private func formatDouble(_ value: Double?) -> String {
+        guard let value else { return "-" }
+        if value.rounded() == value {
+            return "\(Int(value))"
+        }
+        return String(format: "%.1f", value)
+    }
+
+    private func formatTime(_ instant: KotlinInstant) -> String {
+        let date = Date(timeIntervalSince1970: TimeInterval(instant.toEpochMilliseconds()) / 1000)
+        return DateFormatter.snapvetRecordTime.string(from: date)
+    }
+
+    private func formatDate(_ instant: KotlinInstant) -> String {
+        let date = Date(timeIntervalSince1970: TimeInterval(instant.toEpochMilliseconds()) / 1000)
+        return DateFormatter.snapvetRecordDate.string(from: date)
     }
 }
 
