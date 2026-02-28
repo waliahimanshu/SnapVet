@@ -1,8 +1,12 @@
 package com.snapvet.data.local
 
 import com.snapvet.db.Cases
+import com.snapvet.db.Catalog_items
 import com.snapvet.db.Vital_records
 import com.snapvet.domain.model.CRTReading
+import com.snapvet.domain.model.CatalogItem
+import com.snapvet.domain.model.CatalogKind
+import com.snapvet.domain.model.CatalogSource
 import com.snapvet.domain.model.Case
 import com.snapvet.domain.model.CaseStatus
 import com.snapvet.domain.model.ECGReading
@@ -44,5 +48,18 @@ internal fun Vital_records.toDomain(): VitalRecord {
         crt = crt?.let { CRTReading.valueOf(it) },
         mucousMembrane = mucous_membrane?.let { MucousMembraneReading.valueOf(it) },
         notes = notes
+    )
+}
+
+internal fun Catalog_items.toDomain(): CatalogItem {
+    return CatalogItem(
+        id = id,
+        kind = CatalogKind.valueOf(kind),
+        code = code,
+        displayName = display_name,
+        sortOrder = sort_order.toInt(),
+        isActive = is_active != 0L,
+        source = CatalogSource.valueOf(source),
+        updatedAt = Instant.fromEpochMilliseconds(updated_at)
     )
 }

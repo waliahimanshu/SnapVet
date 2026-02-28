@@ -23,9 +23,7 @@ struct CaseListScreen: View {
                     themeToggleRow
                     header
 
-                    Text("Case History")
-                        .font(SnapVetFont.headlineLarge)
-                        .foregroundColor(.snapvetTextPrimary)
+                    caseHistoryHeader
 
                     if viewModel.state.cases.isEmpty {
                         emptyState
@@ -55,7 +53,10 @@ struct CaseListScreen: View {
                 "",
                 isOn: Binding(
                     get: { isDarkMode },
-                    set: { _ in onThemeToggle() }
+                    set: { _ in
+                        SnapVetHaptics.selection()
+                        onThemeToggle()
+                    }
                 )
             )
             .labelsHidden()
@@ -67,22 +68,33 @@ struct CaseListScreen: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 4) {
             Text("SnapVet")
                 .font(.system(size: 48, weight: .bold, design: .rounded))
                 .foregroundColor(.snapvetTextPrimary)
 
             Text("Anesthesia Monitoring")
-                .font(SnapVetFont.headlineMedium)
+                .font(SnapVetFont.titleLarge)
                 .foregroundColor(.snapvetTextSecondary)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .snapVetGlassCard(cornerRadius: 22)
+        .padding(.horizontal, 4)
+        .padding(.top, 4)
+    }
+
+    private var caseHistoryHeader: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("Case History")
+                .font(SnapVetFont.headlineMedium.weight(.semibold))
+                .foregroundColor(.snapvetTextPrimary)
+        }
     }
 
     private func caseCard(for item: Case) -> some View {
-        Button(action: { onCaseSelected(item) }) {
+        Button(action: {
+            SnapVetHaptics.lightTap()
+            onCaseSelected(item)
+        }) {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(alignment: .center) {
                     Text(item.patientName)
@@ -161,24 +173,49 @@ struct CaseListScreen: View {
 private struct FloatingNewCaseButton: View {
     let action: () -> Void
     private var isPad: Bool { UIDevice.current.userInterfaceIdiom == .pad }
-    private var buttonSize: CGFloat { isPad ? 74 : 58 }
-    private var iconSize: CGFloat { isPad ? 28 : 22 }
+    private var iconSize: CGFloat { isPad ? 24 : 20 }
+    private var fallbackButtonSize: CGFloat { isPad ? 72 : 56 }
 
     var body: some View {
-        Button(action: action) {
+        floatingButton
+            .accessibilityLabel("New Case")
+    }
+
+    @ViewBuilder
+    private var floatingButton: some View {
+#if swift(>=6.2)
+        if #available(iOS 26.0, *) {
+            Button(action: {
+                SnapVetHaptics.primaryAction()
+                action()
+            }) {
+                Image(systemName: "plus")
+                    .font(.system(size: iconSize, weight: .bold))
+                    .padding(isPad ? 16 : 12)
+            }
+            .buttonStyle(.glassProminent)
+            .buttonBorderShape(.circle)
+            .tint(.snapvetAccentPrimary)
+        } else {
+            fallbackButton
+        }
+#else
+        fallbackButton
+#endif
+    }
+
+    private var fallbackButton: some View {
+        Button(action: {
+            SnapVetHaptics.primaryAction()
+            action()
+        }) {
             Image(systemName: "plus")
                 .font(.system(size: iconSize, weight: .bold))
-                .frame(width: buttonSize, height: buttonSize)
-                .foregroundColor(.snapvetAccentPrimary)
-                .floatingGlassCircleBackground()
-                .overlay(
-                    Circle()
-                        .stroke(Color.white.opacity(0.28), lineWidth: 1)
-                )
-                .shadow(color: .black.opacity(0.18), radius: isPad ? 14 : 10, x: 0, y: isPad ? 8 : 6)
+                .frame(width: fallbackButtonSize, height: fallbackButtonSize)
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel("New Case")
+        .buttonStyle(.borderedProminent)
+        .buttonBorderShape(.circle)
+        .tint(.snapvetAccentPrimary)
     }
 }
 
@@ -222,32 +259,6 @@ private extension View {
             .overlay(
                 RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                     .stroke(Color.snapvetBorderSubtle, lineWidth: 1)
-            )
-#endif
-    }
-
-    @ViewBuilder
-    func floatingGlassCircleBackground() -> some View {
-#if swift(>=6.2)
-        if #available(iOS 26.0, *) {
-            self
-                .background(
-                    Circle()
-                        .fill(Color.clear)
-                        .glassEffect(.regular, in: Circle())
-                )
-        } else {
-            self
-                .background(
-                    Circle()
-                        .fill(.ultraThinMaterial)
-                )
-        }
-#else
-        self
-            .background(
-                Circle()
-                    .fill(.ultraThinMaterial)
             )
 #endif
     }

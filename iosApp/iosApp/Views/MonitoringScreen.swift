@@ -60,6 +60,7 @@ struct MonitoringScreen: View {
     @State private var showDiscardConfirm = false
     @State private var showEndConfirm = false
     @State private var previousIdleTimerDisabled = false
+    @State private var lastErrorMessage: String?
     @FocusState private var isNotesFieldFocused: Bool
 
     private var state: MonitoringState { viewModel.state }
@@ -156,6 +157,7 @@ struct MonitoringScreen: View {
                     shouldReplaceOnNextInput = false
                 },
                 onCancel: {
+                    SnapVetHaptics.lightTap()
                     shouldReplaceOnNextInput = false
                     selectedField = nil
                 }
@@ -166,7 +168,10 @@ struct MonitoringScreen: View {
         .navigationBarBackButtonHidden(true)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
-                Button(action: { showDiscardConfirm = true }) {
+                Button(action: {
+                    SnapVetHaptics.lightTap()
+                    showDiscardConfirm = true
+                }) {
                     Image(systemName: "chevron.backward")
                         .font(.system(size: 17, weight: .semibold))
                 }
@@ -174,7 +179,10 @@ struct MonitoringScreen: View {
             }
 
             ToolbarItem(placement: .topBarTrailing) {
-                Button(action: { showEndConfirm = true }) {
+                Button(action: {
+                    SnapVetHaptics.primaryAction()
+                    showEndConfirm = true
+                }) {
                     HStack(spacing: 6) {
                         Image(systemName: "stop.circle.fill")
                         Text("End")
@@ -198,6 +206,7 @@ struct MonitoringScreen: View {
             titleVisibility: .visible
         ) {
             Button("Discard", role: .destructive) {
+                SnapVetHaptics.warning()
                 onDiscardSession()
             }
             Button("Keep Monitoring", role: .cancel) {}
@@ -207,6 +216,7 @@ struct MonitoringScreen: View {
         .alert("End anesthesia session?", isPresented: $showEndConfirm) {
             Button("Cancel", role: .cancel) {}
             Button("End Session", role: .destructive) {
+                SnapVetHaptics.prominentCommit()
                 onEndSession()
             }
         } message: {
@@ -218,6 +228,12 @@ struct MonitoringScreen: View {
         }
         .onDisappear {
             UIApplication.shared.isIdleTimerDisabled = previousIdleTimerDisabled
+        }
+        .onChange(of: state.errorMessage) { message in
+            guard let message, !message.isEmpty else { return }
+            guard message != lastErrorMessage else { return }
+            lastErrorMessage = message
+            SnapVetHaptics.error()
         }
     }
 
@@ -497,7 +513,10 @@ struct MonitoringScreen: View {
 
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 88), spacing: 8)], alignment: .leading, spacing: 8) {
                 ForEach(options) { option in
-                    Button(action: { onSelect(option.id) }) {
+                    Button(action: {
+                        SnapVetHaptics.selection()
+                        onSelect(option.id)
+                    }) {
                         Text(option.label)
                             .font(SnapVetFont.bodyMedium.weight(.semibold))
                             .foregroundColor(selectedId == option.id ? .white : .snapvetTextPrimary)
@@ -523,7 +542,7 @@ struct MonitoringScreen: View {
             Button(action: {
                 dismissKeyboard()
                 isNotesFieldFocused = false
-                feedbackSaveAction()
+                SnapVetHaptics.majorSave()
                 viewModel.save()
             }) {
                 HStack(spacing: 8) {
@@ -716,13 +735,11 @@ struct MonitoringScreen: View {
     }
 
     private func feedbackSelection() {
-        let generator = UISelectionFeedbackGenerator()
-        generator.selectionChanged()
+        SnapVetHaptics.selection()
     }
 
     private func feedbackSaveAction() {
-        let generator = UIImpactFeedbackGenerator(style: .medium)
-        generator.impactOccurred()
+        SnapVetHaptics.primaryAction()
     }
 
     private func dismissKeyboard() {

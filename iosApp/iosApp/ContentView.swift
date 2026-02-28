@@ -46,6 +46,8 @@ struct ContentView: View {
                 case .caseSetup:
                     CaseSetupScreen(
                         viewModel: appState.caseSetupWrapper,
+                        procedureCatalogViewModel: appState.procedureCatalogWrapper,
+                        protocolCatalogViewModel: appState.protocolCatalogWrapper,
                         onCaseCreated: { createdCase in
                             appState.startSession(caseInfo: createdCase)
                             path = [.monitoring]
@@ -70,8 +72,13 @@ struct ContentView: View {
                                 }
                             },
                             onEndSession: {
-                                appState.endSession()
-                                path = []
+                                Task {
+                                    if let caseId = await appState.endSessionAndOpenDetails() {
+                                        path = [.caseDetails(caseId)]
+                                    } else {
+                                        path = []
+                                    }
+                                }
                             }
                         )
                         .toolbar(.visible, for: .navigationBar)

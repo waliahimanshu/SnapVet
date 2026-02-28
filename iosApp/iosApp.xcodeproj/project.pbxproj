@@ -6,14 +6,14 @@
 	objectVersion = 77;
 	objects = {
 
-/* Begin PBXFileReference section */
-		B7A54A52059034B8CF3DBD73 /* SnapVet.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SnapVet.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		8F1C6F409B2A4D1E7C3A5B6C /* libsqlite3.tbd */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.text-based-dylib-definition; name = libsqlite3.tbd; path = usr/lib/libsqlite3.tbd; sourceTree = SDKROOT; };
-/* End PBXFileReference section */
-
 /* Begin PBXBuildFile section */
 		8F1C6F3F9B2A4D1E7C3A5B6C /* libsqlite3.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 8F1C6F409B2A4D1E7C3A5B6C /* libsqlite3.tbd */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		8F1C6F409B2A4D1E7C3A5B6C /* libsqlite3.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libsqlite3.tbd; path = usr/lib/libsqlite3.tbd; sourceTree = SDKROOT; };
+		B7A54A52059034B8CF3DBD73 /* SnapVet.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SnapVet.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
 		3CFDC061F04016BE2BD6ABD8 /* Exceptions for "iosApp" folder in "iosApp" target */ = {
@@ -327,8 +327,8 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				SUPPORTS_MACCATALYST = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -357,8 +357,8 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				SUPPORTS_MACCATALYST = YES;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SUPPORTS_MACCATALYST = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";

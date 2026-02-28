@@ -71,6 +71,7 @@ struct RecordTableScreen: View {
         .alert("Delete this case?", isPresented: $showDeleteConfirm) {
             Button("Cancel", role: .cancel) {}
             Button("Delete", role: .destructive) {
+                SnapVetHaptics.warning()
                 onDeleteCase()
             }
         } message: {
@@ -96,7 +97,10 @@ struct RecordTableScreen: View {
     }
 
     private var deleteButton: some View {
-        Button(action: { showDeleteConfirm = true }) {
+        Button(action: {
+            SnapVetHaptics.lightTap()
+            showDeleteConfirm = true
+        }) {
             Image(systemName: "trash")
                 .font(SnapVetFont.titleMedium.weight(.bold))
                 .foregroundColor(.white)
@@ -111,7 +115,10 @@ struct RecordTableScreen: View {
     }
 
     private var exportButton: some View {
-        Button(action: exportPdf) {
+        Button(action: {
+            SnapVetHaptics.lightTap()
+            exportPdf()
+        }) {
             Image(systemName: "square.and.arrow.up")
                 .font(SnapVetFont.titleMedium.weight(.bold))
                 .foregroundColor(.white)
@@ -321,8 +328,10 @@ struct RecordTableScreen: View {
             let url = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
             try data.write(to: url, options: .atomic)
             sharePayload = ShareSheetPayload(activityItems: [url])
+            SnapVetHaptics.prominentCommit()
         } catch {
             exportErrorMessage = error.localizedDescription
+            SnapVetHaptics.error()
         }
     }
 

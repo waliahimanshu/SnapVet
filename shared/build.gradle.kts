@@ -49,6 +49,7 @@ kotlin {
             implementation(libs.compose.uiToolingPreview)
             implementation(libs.kotlinx.coroutines.core)
             implementation(libs.kotlinx.datetime)
+            implementation(libs.kotlinx.serialization.json)
             implementation(libs.sqldelight.runtime)
             implementation(libs.sqldelight.coroutines.extensions)
         }
@@ -84,7 +85,7 @@ sqldelight {
     databases {
         create("SnapVetDatabase") {
             packageName.set("com.snapvet.db")
-            version = 1
+            version = 2
             schemaOutputDirectory.set(file("sqldelight/schema"))
             verifyMigrations.set(true)
         }

@@ -12,9 +12,12 @@ final class AppState: ObservableObject {
     let provider: RepositoryProvider
     private let endAnesthesiaUsecase: EndAnesthesiaUsecase
     private let deleteCaseUsecase: DeleteCaseUsecase
+    private let syncCatalogFromSeedUsecase: SyncCatalogFromSeedUsecase
 
     let caseListWrapper: CaseListViewModelWrapper
     let caseSetupWrapper: CaseSetupViewModelWrapper
+    let procedureCatalogWrapper: CatalogPickerViewModelWrapper
+    let protocolCatalogWrapper: CatalogPickerViewModelWrapper
     @Published var monitoringWrapper: MonitoringViewModelWrapper?
 
     init() {
@@ -29,6 +32,13 @@ final class AppState: ObservableObject {
         self.deleteCaseUsecase = DeleteCaseUsecase(
             caseRepository: provider.caseRepository(),
             vitalRecordRepository: provider.vitalRecordRepository()
+        )
+        let observeCatalogItemsUsecase = ObserveCatalogItemsUsecase(
+            catalogRepository: provider.catalogRepository()
+        )
+        self.syncCatalogFromSeedUsecase = SyncCatalogFromSeedUsecase(
+            catalogRepository: provider.catalogRepository(),
+            timeProvider: SystemTimeProvider()
         )
 
         self.caseListWrapper = CaseListViewModelWrapper(
@@ -47,6 +57,22 @@ final class AppState: ObservableObject {
                 scope: nil
             )
         )
+        self.procedureCatalogWrapper = CatalogPickerViewModelWrapper(
+            viewModel: CatalogPickerViewModel(
+                kind: CatalogKind.procedure,
+                observeCatalogItemsUsecase: observeCatalogItemsUsecase,
+                scope: nil
+            )
+        )
+        self.protocolCatalogWrapper = CatalogPickerViewModelWrapper(
+            viewModel: CatalogPickerViewModel(
+                kind: CatalogKind.protocol,
+                observeCatalogItemsUsecase: observeCatalogItemsUsecase,
+                scope: nil
+            )
+        )
+
+        syncCatalogSeed()
     }
 
     func prepareNewCase() {
@@ -94,11 +120,23 @@ final class AppState: ObservableObject {
         )
     }
 
-    func endSession() {
-        guard let caseId = activeCaseId else { return }
-        Task {
-            _ = try? await endAnesthesiaUsecase.invoke(caseId: caseId)
+    func endSessionAndOpenDetails() async -> String? {
+        guard let caseId = activeCaseId else { return nil }
+
+        _ = try? await endAnesthesiaUsecase.invoke(caseId: caseId)
+
+        let resolvedCase = (try? await provider.caseRepository().getCaseById(id: caseId))
+            ?? activeCase
+
+        if let resolvedCase {
+            openCaseDetails(caseInfo: resolvedCase)
         }
+
+        activeCaseId = nil
+        activeCase = nil
+        monitoringWrapper = nil
+
+        return resolvedCase?.id ?? caseId
     }
 
     func discardActiveSession() async {
@@ -117,6 +155,29 @@ final class AppState: ObservableObject {
         if selectedCase?.id == caseId {
             selectedCase = nil
             selectedRecordTableWrapper = nil
+        }
+    }
+
+    private func syncCatalogSeed() {
+        guard let seedJson = CatalogSeedLoader.loadSeedJson() else { return }
+        Task {
+            await Task.yield()
+
+#if DEBUG
+            let startedAt = Date()
+            print("[CatalogSeed] sync started")
+#endif
+
+            let syncedCount = try? await syncCatalogFromSeedUsecase.invoke(seedJson: seedJson)
+
+#if DEBUG
+            let elapsedMs = Int(Date().timeIntervalSince(startedAt) * 1000)
+            if let syncedCount {
+                print("[CatalogSeed] sync completed (\(syncedCount) items, \(elapsedMs)ms)")
+            } else {
+                print("[CatalogSeed] sync failed (\(elapsedMs)ms)")
+            }
+#endif
         }
     }
 }

@@ -45,6 +45,26 @@ final class CaseSetupViewModelWrapper: ObservableObject {
     func startCase() { viewModel.startCase() }
 }
 
+@MainActor
+final class CatalogPickerViewModelWrapper: ObservableObject {
+    @Published var state: CatalogPickerState
+    private let viewModel: CatalogPickerViewModel
+    private var task: Task<Void, Never>?
+
+    init(viewModel: CatalogPickerViewModel) {
+        self.viewModel = viewModel
+        self.state = viewModel.state.value
+        self.task = Task { [weak self] in
+            guard let self else { return }
+            for await value in viewModel.state {
+                self.state = value
+            }
+        }
+    }
+
+    func updateQuery(_ value: String) { viewModel.updateQuery(value: value) }
+}
+
 private func kotlinDouble(_ value: Double?) -> KotlinDouble? {
     guard let value else { return nil }
     return KotlinDouble(double: value)
