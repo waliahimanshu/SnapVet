@@ -46,6 +46,12 @@ open iosApp/iosApp.xcodeproj
 
 - iOS release uses a two-step GitHub Actions pipeline: TestFlight upload first, then a separate manual App Store submission workflow.
 - Full setup, secrets, and operating steps are documented in `docs/ios-release-pipeline.md`.
+- TestFlight upload workflow: `.github/workflows/ios-testflight.yml` (trigger: tag `ios/v*` or manual dispatch).
+- App Store submission workflow: `.github/workflows/ios-appstore-submit.yml` (manual only; requires `app_version` + `build_number` inputs).
+- Versioning rule: bump `MARKETING_VERSION` manually when starting a new release line; CI build number is auto-derived from `GITHUB_RUN_NUMBER` in `fastlane beta`.
+- Export compliance: if app uses only Apple/system encryption (no custom/proprietary crypto), set `ITSAppUsesNonExemptEncryption=false` in `iosApp/iosApp/Info.plist` and choose "None of the algorithms mentioned above" in App Store Connect when prompted.
+- App icon requirement for upload: `iosApp/iosApp/Assets.xcassets/AppIcon.appiconset` must include required iPhone/iPad slots plus `ios-marketing` 1024x1024, and app metadata must include `CFBundleIconName=AppIcon`.
+- Xcode/signing reliability: keep one active Xcode selected via `xcode-select`, avoid mixed toolchains during archive/export, and ensure the selected team has permission to create/use App Store provisioning profiles.
 - Keep this section mirrored across `AGENTS.md` and `CLAUDE.md` when release automation changes.
 
 ## Architecture
