@@ -50,14 +50,14 @@ fun CaseSetupScreen(
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             val selectedSpecies = state.species
             if (selectedSpecies == Species.DOG) {
-                Button(onClick = { viewModel.updateSpecies(Species.DOG) }) { Text("Dog") }
+                Button(onClick = { viewModel.updateSpecies(Species.DOG) }) { Text("Canine") }
             } else {
-                OutlinedButton(onClick = { viewModel.updateSpecies(Species.DOG) }) { Text("Dog") }
+                OutlinedButton(onClick = { viewModel.updateSpecies(Species.DOG) }) { Text("Canine") }
             }
             if (selectedSpecies == Species.CAT) {
-                Button(onClick = { viewModel.updateSpecies(Species.CAT) }) { Text("Cat") }
+                Button(onClick = { viewModel.updateSpecies(Species.CAT) }) { Text("Feline") }
             } else {
-                OutlinedButton(onClick = { viewModel.updateSpecies(Species.CAT) }) { Text("Cat") }
+                OutlinedButton(onClick = { viewModel.updateSpecies(Species.CAT) }) { Text("Feline") }
             }
         }
 

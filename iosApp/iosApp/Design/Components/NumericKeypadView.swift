@@ -4,6 +4,7 @@ import SwiftUI
 struct NumericKeypadView: View {
     @Binding var currentValue: String
     var unitLabel: String? = nil
+    var showsDecimalKey: Bool = true
     var onNumberTap: (String) -> Void = { _ in }
     var onDecimalTap: () -> Void = {}
     var onBackspaceTap: () -> Void = {}
@@ -49,18 +50,24 @@ struct NumericKeypadView: View {
                 }
             }
 
-            // Bottom row (0, ., backspace)
+            // Bottom row (0, optional decimal, backspace)
             HStack(spacing: 8) {
                 NumericKeypadButton(
                     label: "0",
                     isAccent: false,
                     action: { onNumberTap("0") }
                 )
-                NumericKeypadButton(
-                    label: ".",
-                    isAccent: false,
-                    action: onDecimalTap
-                )
+                if showsDecimalKey {
+                    NumericKeypadButton(
+                        label: ".",
+                        isAccent: false,
+                        action: onDecimalTap
+                    )
+                } else {
+                    Color.clear
+                        .frame(maxWidth: .infinity)
+                        .frame(minHeight: 60)
+                }
                 NumericKeypadButton(
                     label: "⌫",
                     isAccent: false,

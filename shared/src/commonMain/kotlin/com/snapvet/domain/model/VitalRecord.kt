@@ -16,8 +16,11 @@ data class VitalRecord(
     val temp: Double?,
     val sevoIso: Double?,
     val o2Flow: Double?,
+    val fluids: Double?,
     val ecg: ECGReading?,
+    val ecgOtherText: String?,
     val crt: CRTReading?,
+    val pulseQuality: PulseQuality?,
     val mucousMembrane: MucousMembraneReading?,
     val notes: String?
 )
@@ -34,8 +37,11 @@ data class VitalsInput(
     val temp: Double?,
     val sevoIso: Double?,
     val o2Flow: Double?,
+    val fluids: Double?,
     val ecg: ECGReading?,
+    val ecgOtherText: String?,
     val crt: CRTReading?,
+    val pulseQuality: PulseQuality?,
     val mucousMembrane: MucousMembraneReading?,
     val notes: String?
 )

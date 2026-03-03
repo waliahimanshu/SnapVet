@@ -85,7 +85,7 @@ sqldelight {
     databases {
         create("SnapVetDatabase") {
             packageName.set("com.snapvet.db")
-            version = 2
+            version = 4
             schemaOutputDirectory.set(file("sqldelight/schema"))
             verifyMigrations.set(true)
         }

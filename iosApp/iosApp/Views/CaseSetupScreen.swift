@@ -5,7 +5,6 @@ import Shared
 struct CaseSetupScreen: View {
     @ObservedObject var viewModel: CaseSetupViewModelWrapper
     @ObservedObject var procedureCatalogViewModel: CatalogPickerViewModelWrapper
-    @ObservedObject var protocolCatalogViewModel: CatalogPickerViewModelWrapper
     var onCaseCreated: (Case) -> Void = { _ in }
     var onCancel: () -> Void = {}
 
@@ -16,6 +15,7 @@ struct CaseSetupScreen: View {
     @State private var hasAutoFocusedName = false
     @State private var screenAppearAt: Date?
     @State private var didLogFirstNameInput = false
+    @AppStorage("snapvet_weight_unit") private var weightUnitRawValue = WeightUnit.lb.rawValue
 
     private enum Field {
         case name
@@ -24,7 +24,6 @@ struct CaseSetupScreen: View {
 
     private enum PickerType: String, Identifiable {
         case procedure
-        case `protocol`
 
         var id: String { rawValue }
     }
@@ -79,11 +78,11 @@ struct CaseSetupScreen: View {
                             error: shouldShowSpeciesError ? "Species is required" : nil
                         ) {
                             Menu {
-                                Button("Dog") {
+                                Button("Canine") {
                                     SnapVetHaptics.selection()
                                     viewModel.updateSpecies(Species.dog)
                                 }
-                                Button("Cat") {
+                                Button("Feline") {
                                     SnapVetHaptics.selection()
                                     viewModel.updateSpecies(Species.cat)
                                 }
@@ -102,14 +101,28 @@ struct CaseSetupScreen: View {
                         }
 
                         labelledField(
-                            title: "Weight (lb) *",
+                            title: "Weight (\(weightUnit.title)) *",
                             error: shouldShowWeightError ? "Weight is required" : nil
                         ) {
                             TextField(
-                                "Enter weight in pounds",
+                                "Enter weight in \(weightUnit.title)",
                                 text: Binding(
-                                    get: { state.weight.map { formatWeightInput(Double(truncating: $0)) } ?? "" },
-                                    set: { viewModel.updateWeight(Double($0.filter { "0123456789.".contains($0) })) }
+                                    get: {
+                                        state.weight.map {
+                                            let pounds = Double(truncating: $0)
+                                            let displayed = weightUnit == .kg ? (pounds / 2.20462) : pounds
+                                            return formatWeightInput(displayed)
+                                        } ?? ""
+                                    },
+                                    set: { input in
+                                        let sanitized = sanitizeWeightInput(input)
+                                        guard !sanitized.isEmpty, let parsed = Double(sanitized) else {
+                                            viewModel.updateWeight(nil)
+                                            return
+                                        }
+                                        let pounds = weightUnit == .kg ? (parsed * 2.20462) : parsed
+                                        viewModel.updateWeight(pounds)
+                                    }
                                 )
                             )
                             .keyboardType(.decimalPad)
@@ -128,19 +141,6 @@ struct CaseSetupScreen: View {
                                 dropdownLabel(
                                     text: state.procedure.isEmpty ? "Search and select procedure" : state.procedure,
                                     isPlaceholder: state.procedure.isEmpty
-                                )
-                            }
-                            .buttonStyle(.plain)
-                        }
-
-                        labelledField(title: "Anesthetic Protocol") {
-                            Button {
-                                SnapVetHaptics.selection()
-                                activePicker = .protocol
-                            } label: {
-                                dropdownLabel(
-                                    text: state.anestheticProtocol.isEmpty ? "Search and select protocol" : state.anestheticProtocol,
-                                    isPlaceholder: state.anestheticProtocol.isEmpty
                                 )
                             }
                             .buttonStyle(.plain)
@@ -209,17 +209,6 @@ struct CaseSetupScreen: View {
                     }
                 )
                 .presentationDetents([.medium, .large])
-
-            case .protocol:
-                CatalogPickerSheet(
-                    title: "Protocol",
-                    viewModel: protocolCatalogViewModel,
-                    selectedValue: state.anestheticProtocol,
-                    onSelect: { item in
-                        viewModel.updateAnestheticProtocol(item.displayName)
-                    }
-                )
-                .presentationDetents([.medium, .large])
             }
         }
         .onChange(of: state.createdCase?.id) { _ in
@@ -271,8 +260,8 @@ struct CaseSetupScreen: View {
 
     private var selectedSpeciesLabel: String {
         switch state.species {
-        case .dog: return "Dog"
-        case .cat: return "Cat"
+        case .dog: return "Canine"
+        case .cat: return "Feline"
         default: return "Select species"
         }
     }
@@ -316,6 +305,28 @@ struct CaseSetupScreen: View {
             return "\(Int(value))"
         }
         return String(format: "%.1f", value)
+    }
+
+    private var weightUnit: WeightUnit {
+        WeightUnit(rawValue: weightUnitRawValue) ?? .lb
+    }
+
+    private func sanitizeWeightInput(_ input: String) -> String {
+        var result = ""
+        var hasDecimal = false
+
+        for character in input {
+            if character.isNumber {
+                result.append(character)
+                continue
+            }
+            if character == ".", !hasDecimal {
+                hasDecimal = true
+                result.append(character)
+            }
+        }
+
+        return result
     }
 
     @ViewBuilder

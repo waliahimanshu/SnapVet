@@ -9,18 +9,7 @@ struct ContentView: View {
         case caseSetup
         case monitoring
         case caseDetails(String)
-    }
-
-    enum AppAppearance: String {
-        case dark
-        case light
-
-        var colorScheme: ColorScheme {
-            switch self {
-            case .dark: return .dark
-            case .light: return .light
-            }
-        }
+        case settings
     }
 
     @State private var path: [Route] = []
@@ -29,8 +18,9 @@ struct ContentView: View {
         NavigationStack(path: $path) {
             CaseListScreen(
                 viewModel: appState.caseListWrapper,
-                isDarkMode: currentAppearance == .dark,
-                onThemeToggle: toggleAppearance,
+                onOpenSettings: {
+                    path.append(.settings)
+                },
                 onNewCase: {
                     appState.prepareNewCase()
                     path.append(.caseSetup)
@@ -47,7 +37,6 @@ struct ContentView: View {
                     CaseSetupScreen(
                         viewModel: appState.caseSetupWrapper,
                         procedureCatalogViewModel: appState.procedureCatalogWrapper,
-                        protocolCatalogViewModel: appState.protocolCatalogWrapper,
                         onCaseCreated: { createdCase in
                             appState.startSession(caseInfo: createdCase)
                             path = [.monitoring]
@@ -63,7 +52,9 @@ struct ContentView: View {
                         MonitoringScreen(
                             viewModel: monitoring,
                             patientName: appState.activeCase?.patientName ?? "",
-                            species: appState.activeCase?.species.name ?? "",
+                            species: appState.activeCase?.species == .dog
+                                ? "Canine"
+                                : (appState.activeCase?.species == .cat ? "Feline" : ""),
                             weight: appState.activeCase?.weight.description ?? "",
                             onDiscardSession: {
                                 Task {
@@ -102,6 +93,10 @@ struct ContentView: View {
                         )
                         .toolbar(.visible, for: .navigationBar)
                     }
+
+                case .settings:
+                    SettingsScreen()
+                        .toolbar(.visible, for: .navigationBar)
                 }
             }
         }
@@ -112,10 +107,6 @@ struct ContentView: View {
 
     private var currentAppearance: AppAppearance {
         AppAppearance(rawValue: appearanceModeRawValue) ?? .dark
-    }
-
-    private func toggleAppearance() {
-        appearanceModeRawValue = currentAppearance == .dark ? AppAppearance.light.rawValue : AppAppearance.dark.rawValue
     }
 }
 

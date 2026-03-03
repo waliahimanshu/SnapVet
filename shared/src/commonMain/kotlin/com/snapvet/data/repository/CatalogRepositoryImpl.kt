@@ -22,18 +22,14 @@ class CatalogRepositoryImpl(
     override suspend fun upsertSeeded(items: List<CatalogItem>) {
         withContext(dispatcher) {
             items.forEach { item ->
-                queries.upsertCatalogItem(
-                    id = item.id,
-                    kind = item.kind.name,
-                    code = item.code,
-                    display_name = item.displayName,
-                    search_text = normalizeSearchText(item.displayName),
-                    sort_order = item.sortOrder.toLong(),
-                    is_active = if (item.isActive) 1 else 0,
-                    source = item.source.name,
-                    updated_at = item.updatedAt.toEpochMilliseconds()
-                )
+                upsert(item)
             }
+        }
+    }
+
+    override suspend fun upsertCustom(item: CatalogItem) {
+        withContext(dispatcher) {
+            upsert(item)
         }
     }
 
@@ -67,5 +63,19 @@ class CatalogRepositoryImpl(
         return value.trim()
             .lowercase()
             .replace("\\s+".toRegex(), " ")
+    }
+
+    private fun upsert(item: CatalogItem) {
+        queries.upsertCatalogItem(
+            id = item.id,
+            kind = item.kind.name,
+            code = item.code,
+            display_name = item.displayName,
+            search_text = normalizeSearchText(item.displayName),
+            sort_order = item.sortOrder.toLong(),
+            is_active = if (item.isActive) 1 else 0,
+            source = item.source.name,
+            updated_at = item.updatedAt.toEpochMilliseconds()
+        )
     }
 }

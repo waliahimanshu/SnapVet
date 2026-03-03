@@ -7,26 +7,28 @@ private enum NumericField: String, CaseIterable, Identifiable {
     case rr = "RR"
     case spo2 = "SpO₂"
     case etco2 = "EtCO₂"
-    case bpSys = "Systolic BP"
-    case bpDia = "Diastolic BP"
+    case bp = "BP"
     case temp = "Temp"
     case sevoIso = "Iso/Sevo"
     case o2Flow = "O₂"
+    case fluids = "Fluids"
 
     var unit: String {
         switch self {
         case .hr, .rr: return "bpm"
         case .spo2: return "%"
-        case .etco2, .bpSys, .bpDia: return "mmHg"
+        case .etco2: return "mmHg"
+        case .bp: return ""
         case .temp: return "°C"
         case .sevoIso: return "%"
         case .o2Flow: return "L/min"
+        case .fluids: return "ml/hr"
         }
     }
 
     var allowsDecimal: Bool {
         switch self {
-        case .temp, .sevoIso, .o2Flow:
+        case .temp, .sevoIso, .o2Flow, .fluids:
             return true
         default:
             return false
@@ -46,6 +48,28 @@ private struct SnapshotMetric {
     let value: String
 }
 
+private enum BloodPressureEditorField: CaseIterable {
+    case sap
+    case dap
+    case map
+
+    var shortLabel: String {
+        switch self {
+        case .sap: return "SAP"
+        case .dap: return "DAP"
+        case .map: return "MAP"
+        }
+    }
+
+    var fullLabel: String {
+        switch self {
+        case .sap: return "Systolic Arterial Pressure"
+        case .dap: return "Diastolic Arterial Pressure"
+        case .map: return "Mean Arterial Pressure"
+        }
+    }
+}
+
 struct MonitoringScreen: View {
     @ObservedObject var viewModel: MonitoringViewModelWrapper
     var patientName: String
@@ -57,11 +81,23 @@ struct MonitoringScreen: View {
     @State private var selectedField: NumericField?
     @State private var keypadValue: String = ""
     @State private var shouldReplaceOnNextInput = false
+    @State private var showBpEditor = false
+    @State private var showEcgOtherEditor = false
+    @State private var ecgOtherInput = ""
+    @State private var bpSysInput = ""
+    @State private var bpDiaInput = ""
+    @State private var bpMapInput = ""
+    @State private var selectedBpField: BloodPressureEditorField = .sap
     @State private var showDiscardConfirm = false
     @State private var showEndConfirm = false
     @State private var previousIdleTimerDisabled = false
     @State private var lastErrorMessage: String?
+    @State private var nudgeHapticArmed = true
     @FocusState private var isNotesFieldFocused: Bool
+    @AppStorage("snapvet_weight_unit") private var weightUnitRawValue = WeightUnit.lb.rawValue
+    @AppStorage("snapvet_temperature_unit") private var temperatureUnitRawValue = TemperatureUnit.celsius.rawValue
+    @AppStorage("snapvet_save_nudge_interval_minutes") private var saveNudgeIntervalMinutes = 5
+    @AppStorage("snapvet_enable_vital_warnings") private var enableVitalWarnings = true
 
     private var state: MonitoringState { viewModel.state }
     private var current: VitalsInput { state.currentVitals }
@@ -116,7 +152,8 @@ struct MonitoringScreen: View {
         }) { field in
             NumericKeypadView(
                 currentValue: $keypadValue,
-                unitLabel: field.unit,
+                unitLabel: unitLabel(for: field),
+                showsDecimalKey: field.allowsDecimal,
                 onNumberTap: { number in
                     feedbackSelection()
                     if shouldReplaceOnNextInput {
@@ -164,6 +201,14 @@ struct MonitoringScreen: View {
             )
             .padding(12)
             .background(Color.snapvetPrimaryBg)
+        }
+        .sheet(isPresented: $showBpEditor) {
+            bloodPressureEditor
+                .background(Color.snapvetPrimaryBg)
+        }
+        .sheet(isPresented: $showEcgOtherEditor) {
+            ecgOtherEditor
+                .background(Color.snapvetPrimaryBg)
         }
         .navigationBarBackButtonHidden(true)
         .toolbar {
@@ -229,11 +274,19 @@ struct MonitoringScreen: View {
         .onDisappear {
             UIApplication.shared.isIdleTimerDisabled = previousIdleTimerDisabled
         }
-        .onChange(of: state.errorMessage) { message in
+        .onChange(of: state.errorMessage) { _, message in
             guard let message, !message.isEmpty else { return }
             guard message != lastErrorMessage else { return }
             lastErrorMessage = message
             SnapVetHaptics.error()
+        }
+        .onChange(of: shouldNudgeSave) { _, active in
+            if active, nudgeHapticArmed {
+                SnapVetHaptics.warning()
+                nudgeHapticArmed = false
+            } else if !active {
+                nudgeHapticArmed = true
+            }
         }
     }
 
@@ -277,11 +330,19 @@ struct MonitoringScreen: View {
                     ParameterTileView(
                         name: field.rawValue,
                         value: formattedValue(for: field),
-                        unit: field.unit,
+                        unit: unitLabel(for: field),
                         status: status(for: field),
                         previousValue: previousValue(for: field)
                     ) {
                         feedbackSelection()
+                        if field == .bp {
+                            bpSysInput = current.bpSys?.intValue.description ?? ""
+                            bpDiaInput = current.bpDia?.intValue.description ?? ""
+                            bpMapInput = current.bpMap?.intValue.description ?? ""
+                            selectedBpField = .sap
+                            showBpEditor = true
+                            return
+                        }
                         let existingValue = rawFieldValue(for: field)
                         keypadValue = existingValue
                         shouldReplaceOnNextInput = !existingValue.isEmpty
@@ -401,9 +462,11 @@ struct MonitoringScreen: View {
         append("SpO₂", record.spo2?.intValue.description)
         append("EtCO₂", record.etco2?.intValue.description)
         append("BP", snapshotBloodPressure(for: record))
-        append("Temp", formatOptionalDouble(record.temp?.doubleValue))
+        append("Temp", displayTemperature(record.temp?.doubleValue))
         append("Iso/Sevo", formatOptionalDouble(record.sevoIso?.doubleValue))
         append("O₂", formatOptionalDouble(record.o2Flow?.doubleValue))
+        append("Fluids", formatOptionalDouble(record.fluids?.doubleValue))
+        append("Pulse", displayEnum(record.pulseQuality?.name, fallback: ""))
 
         return metrics
     }
@@ -412,20 +475,8 @@ struct MonitoringScreen: View {
         let sys = record.bpSys?.intValue
         let dia = record.bpDia?.intValue
         let map = record.bpMap?.intValue
-
-        if sys == nil, dia == nil, map == nil {
-            return nil
-        }
-
-        if sys == nil, dia == nil, let map {
-            return "MAP \(map)"
-        }
-
-        let pressure = "\(sys.map(String.init) ?? "-")/\(dia.map(String.init) ?? "-")"
-        if let map {
-            return "\(pressure) (MAP \(map))"
-        }
-        return pressure
+        let formatted = formatBloodPressure(sys: sys, dia: dia, map: map)
+        return formatted == "—" ? nil : formatted
     }
 
     private var observationsPanel: some View {
@@ -441,17 +492,30 @@ struct MonitoringScreen: View {
                     ObservationOption(id: "SINUS_BRADY", label: "Brady"),
                     ObservationOption(id: "SINUS_TACHY", label: "Tachy"),
                     ObservationOption(id: "VPCS", label: "VPCs"),
-                    ObservationOption(id: "ATRIAL_FIB", label: "A-Fib")
+                    ObservationOption(id: "ATRIAL_FIB", label: "A-Fib"),
+                    ObservationOption(id: "ASYSTOLE", label: "Asystole"),
+                    ObservationOption(id: "OTHER", label: ecgOtherChipLabel)
                 ],
                 selectedId: current.ecg?.name,
-                onSelect: { viewModel.updateEcg(name: $0) }
+                onSelect: { selected in
+                    if selected == "OTHER" {
+                        ecgOtherInput = current.ecgOtherText ?? ""
+                        viewModel.updateEcg(name: selected)
+                        showEcgOtherEditor = true
+                    } else {
+                        viewModel.updateEcg(name: selected)
+                        viewModel.updateEcgOtherText(nil)
+                    }
+                }
             )
 
             observationRow(
                 title: "CRT (Capillary Refill Time)",
                 options: [
-                    ObservationOption(id: "LESS_THAN_2_SEC", label: "<2s"),
-                    ObservationOption(id: "GREATER_THAN_2_SEC", label: ">2s")
+                    ObservationOption(id: "LESS_THAN_1_SEC", label: "< 1 sec"),
+                    ObservationOption(id: "BETWEEN_1_AND_2_SEC", label: "1-2 sec"),
+                    ObservationOption(id: "BETWEEN_2_AND_3_SEC", label: "2-3 sec"),
+                    ObservationOption(id: "GREATER_THAN_3_SEC", label: "> 3 sec")
                 ],
                 selectedId: current.crt?.name,
                 onSelect: { viewModel.updateCrt(name: $0) }
@@ -463,11 +527,23 @@ struct MonitoringScreen: View {
                     ObservationOption(id: "PINK", label: "Pink"),
                     ObservationOption(id: "PALE", label: "Pale"),
                     ObservationOption(id: "BLUE", label: "Cyanotic"),
-                    ObservationOption(id: "GREY", label: "Grey"),
-                    ObservationOption(id: "MUDDY", label: "Muddy")
+                    ObservationOption(id: "INJECTED", label: "Injected"),
+                    ObservationOption(id: "ICTERIC", label: "Icteric")
                 ],
                 selectedId: current.mucousMembrane?.name,
                 onSelect: { viewModel.updateMucousMembrane(name: $0) }
+            )
+
+            observationRow(
+                title: "Pulse Quality",
+                options: [
+                    ObservationOption(id: "STRONG", label: "Strong"),
+                    ObservationOption(id: "MODERATE", label: "Moderate"),
+                    ObservationOption(id: "WEAK", label: "Weak"),
+                    ObservationOption(id: "ABSENT", label: "Absent")
+                ],
+                selectedId: current.pulseQuality?.name,
+                onSelect: { viewModel.updatePulseQuality(name: $0) }
             )
 
             VStack(alignment: .leading, spacing: 6) {
@@ -559,14 +635,14 @@ struct MonitoringScreen: View {
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .stroke(state.shouldNudgeSave ? Color.snapvetAccentWarning : Color.clear, lineWidth: 2)
+                        .stroke(shouldNudgeSave ? Color.snapvetAccentWarning : Color.clear, lineWidth: 2)
                 )
             }
             .buttonStyle(.plain)
 
             Text(saveStatusText)
                 .font(SnapVetFont.bodySmall)
-                .foregroundColor(state.shouldNudgeSave ? .snapvetAccentWarning : .snapvetTextSecondary)
+                .foregroundColor(shouldNudgeSave ? .snapvetAccentWarning : .snapvetTextSecondary)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
@@ -590,11 +666,16 @@ struct MonitoringScreen: View {
         case .rr: return displayInt(current.rr)
         case .spo2: return displayInt(current.spo2)
         case .etco2: return displayInt(current.etco2)
-        case .bpSys: return displayInt(current.bpSys)
-        case .bpDia: return displayInt(current.bpDia)
-        case .temp: return displayDouble(current.temp)
+        case .bp:
+            return formatBloodPressure(
+                sys: current.bpSys?.intValue,
+                dia: current.bpDia?.intValue,
+                map: current.bpMap?.intValue
+            )
+        case .temp: return displayTemperature(current.temp?.doubleValue) ?? "--"
         case .sevoIso: return displayDouble(current.sevoIso)
         case .o2Flow: return displayDouble(current.o2Flow)
+        case .fluids: return displayDouble(current.fluids)
         }
     }
 
@@ -605,11 +686,16 @@ struct MonitoringScreen: View {
         case .rr: return lastSaved.rr?.intValue.description
         case .spo2: return lastSaved.spo2?.intValue.description
         case .etco2: return lastSaved.etco2?.intValue.description
-        case .bpSys: return lastSaved.bpSys?.intValue.description
-        case .bpDia: return lastSaved.bpDia?.intValue.description
-        case .temp: return formatOptionalDouble(lastSaved.temp?.doubleValue)
+        case .bp:
+            return formatBloodPressure(
+                sys: lastSaved.bpSys?.intValue,
+                dia: lastSaved.bpDia?.intValue,
+                map: lastSaved.bpMap?.intValue
+            )
+        case .temp: return displayTemperature(lastSaved.temp?.doubleValue)
         case .sevoIso: return formatOptionalDouble(lastSaved.sevoIso?.doubleValue)
         case .o2Flow: return formatOptionalDouble(lastSaved.o2Flow?.doubleValue)
+        case .fluids: return formatOptionalDouble(lastSaved.fluids?.doubleValue)
         }
     }
 
@@ -619,11 +705,11 @@ struct MonitoringScreen: View {
         case .rr: return current.rr?.intValue.description ?? ""
         case .spo2: return current.spo2?.intValue.description ?? ""
         case .etco2: return current.etco2?.intValue.description ?? ""
-        case .bpSys: return current.bpSys?.intValue.description ?? ""
-        case .bpDia: return current.bpDia?.intValue.description ?? ""
-        case .temp: return formatOptionalDouble(current.temp?.doubleValue) ?? ""
+        case .bp: return ""
+        case .temp: return displayTemperature(current.temp?.doubleValue) ?? ""
         case .sevoIso: return formatOptionalDouble(current.sevoIso?.doubleValue) ?? ""
         case .o2Flow: return formatOptionalDouble(current.o2Flow?.doubleValue) ?? ""
+        case .fluids: return formatOptionalDouble(current.fluids?.doubleValue) ?? ""
         }
     }
 
@@ -632,27 +718,27 @@ struct MonitoringScreen: View {
         var rr = current.rr
         var spo2 = current.spo2
         var etco2 = current.etco2
-        var bpSys = current.bpSys
-        var bpDia = current.bpDia
-        var bpMap = current.bpMap
         var temp = current.temp
         var sevoIso = current.sevoIso
         var o2Flow = current.o2Flow
+        var fluids = current.fluids
 
         switch field {
         case .hr: hr = kotlinInt(value)
         case .rr: rr = kotlinInt(value)
         case .spo2: spo2 = kotlinInt(value)
         case .etco2: etco2 = kotlinInt(value)
-        case .bpSys:
-            bpSys = kotlinInt(value)
-            bpMap = computeMap(sys: bpSys, dia: bpDia)
-        case .bpDia:
-            bpDia = kotlinInt(value)
-            bpMap = computeMap(sys: bpSys, dia: bpDia)
-        case .temp: temp = kotlinDouble(value)
+        case .bp:
+            break
+        case .temp:
+            if let parsed = Double(value), temperatureUnit == .fahrenheit {
+                temp = KotlinDouble(double: (parsed - 32.0) * 5.0 / 9.0)
+            } else {
+                temp = kotlinDouble(value)
+            }
         case .sevoIso: sevoIso = kotlinDouble(value)
         case .o2Flow: o2Flow = kotlinDouble(value)
+        case .fluids: fluids = kotlinDouble(value)
         }
 
         viewModel.updateVitals(
@@ -661,14 +747,17 @@ struct MonitoringScreen: View {
                 rr: rr,
                 spo2: spo2,
                 etco2: etco2,
-                bpSys: bpSys,
-                bpDia: bpDia,
-                bpMap: bpMap,
+                bpSys: current.bpSys,
+                bpDia: current.bpDia,
+                bpMap: current.bpMap,
                 temp: temp,
                 sevoIso: sevoIso,
                 o2Flow: o2Flow,
+                fluids: fluids,
                 ecg: current.ecg,
+                ecgOtherText: current.ecgOtherText,
                 crt: current.crt,
+                pulseQuality: current.pulseQuality,
                 mucousMembrane: current.mucousMembrane,
                 notes: current.notes
             )
@@ -677,16 +766,27 @@ struct MonitoringScreen: View {
 
     private func computeMap(sys: KotlinInt?, dia: KotlinInt?) -> KotlinInt? {
         guard let sys, let dia else { return nil }
-        let map = (Int(sys.intValue) + (2 * Int(dia.intValue))) / 3
+        let map = Int(dia.intValue) + ((Int(sys.intValue) - Int(dia.intValue)) / 3)
         return KotlinInt(int: Int32(map))
     }
 
     private func status(for field: NumericField) -> ParameterStatus {
+        guard enableVitalWarnings else { return .normal }
+        let isFeline = speciesProfile == .feline
+
         switch field {
         case .hr:
-            return statusForInt(current.hr, warningRange: 60...160, alertRange: 45...190)
+            return statusForInt(
+                current.hr,
+                warningRange: isFeline ? 80...180 : 50...160,
+                alertRange: isFeline ? 60...220 : 40...200
+            )
         case .rr:
-            return statusForInt(current.rr, warningRange: 8...45, alertRange: 5...60)
+            return statusForInt(
+                current.rr,
+                warningRange: isFeline ? 12...45 : 8...40,
+                alertRange: isFeline ? 8...60 : 5...55
+            )
         case .spo2:
             guard let value = current.spo2?.intValue else { return .normal }
             if value < 90 { return .alert }
@@ -697,18 +797,43 @@ struct MonitoringScreen: View {
             if value < 25 || value > 65 { return .alert }
             if value < 30 || value > 55 { return .warning }
             return .normal
-        case .bpSys:
-            return statusForInt(current.bpSys, warningRange: 80...170, alertRange: 70...190)
-        case .bpDia:
-            return statusForInt(current.bpDia, warningRange: 45...110, alertRange: 35...130)
+        case .bp:
+            let systolicStatus = statusForInt(
+                current.bpSys,
+                warningRange: isFeline ? 90...170 : 80...170,
+                alertRange: isFeline ? 80...190 : 70...190
+            )
+            let diastolicStatus = statusForInt(current.bpDia, warningRange: 45...110, alertRange: 35...130)
+            let mapStatus = statusForInt(
+                current.bpMap,
+                warningRange: isFeline ? 65...120 : 60...120,
+                alertRange: isFeline ? 60...130 : 55...130
+            )
+            if systolicStatus == .alert || diastolicStatus == .alert || mapStatus == .alert { return .alert }
+            if systolicStatus == .warning || diastolicStatus == .warning || mapStatus == .warning { return .warning }
+            return .normal
         case .temp:
             guard let value = current.temp?.doubleValue else { return .normal }
-            if value < 35.5 || value > 40 { return .alert }
-            if value < 36.5 || value > 39 { return .warning }
+            let celsius = value
+            if isFeline {
+                if celsius < 36.0 || celsius > 40.5 { return .alert }
+                if celsius < 37.0 || celsius > 39.5 { return .warning }
+                return .normal
+            }
+            if celsius < 35.5 || celsius > 40.0 { return .alert }
+            if celsius < 36.5 || celsius > 39.0 { return .warning }
             return .normal
-        case .sevoIso, .o2Flow:
+        case .sevoIso, .o2Flow, .fluids:
             return .normal
         }
+    }
+
+    private var speciesProfile: SpeciesProfile {
+        let normalized = species.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if normalized.contains("feline") || normalized.contains("cat") {
+            return .feline
+        }
+        return .canine
     }
 
     private func statusForInt(_ value: KotlinInt?, warningRange: ClosedRange<Int>, alertRange: ClosedRange<Int>) -> ParameterStatus {
@@ -734,6 +859,34 @@ struct MonitoringScreen: View {
         return String(format: "%.1f", value)
     }
 
+    private var shouldNudgeSave: Bool {
+        guard let seconds = state.secondsSinceLastSave?.int64Value else { return false }
+        return seconds >= Int64(max(1, saveNudgeIntervalMinutes) * 60)
+    }
+
+    private var weightUnit: WeightUnit {
+        WeightUnit(rawValue: weightUnitRawValue) ?? .lb
+    }
+
+    private var temperatureUnit: TemperatureUnit {
+        TemperatureUnit(rawValue: temperatureUnitRawValue) ?? .celsius
+    }
+
+    private func unitLabel(for field: NumericField) -> String {
+        if field == .temp {
+            return temperatureUnit.title
+        }
+        return field.unit
+    }
+
+    private func displayTemperature(_ celsius: Double?) -> String? {
+        guard let celsius else { return nil }
+        if temperatureUnit == .fahrenheit {
+            return formatOptionalDouble((celsius * 9.0 / 5.0) + 32.0)
+        }
+        return formatOptionalDouble(celsius)
+    }
+
     private func feedbackSelection() {
         SnapVetHaptics.selection()
     }
@@ -757,7 +910,17 @@ struct MonitoringScreen: View {
 
     private func displayWeight(_ value: String) -> String {
         guard !value.isEmpty else { return "—" }
-        return "\(value) lb"
+        guard let pounds = Double(value) else { return "—" }
+        let displayed = weightUnit == .kg ? (pounds / 2.20462) : pounds
+        if displayed.rounded() == displayed {
+            return "\(Int(displayed)) \(weightUnit.title)"
+        }
+        return String(format: "%.1f %@", displayed, weightUnit.title)
+    }
+
+    private var ecgOtherChipLabel: String {
+        let text = current.ecgOtherText?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return text.isEmpty ? "Other" : text
     }
 
     private func displayEnum(_ rawName: String?, fallback: String) -> String {
@@ -789,6 +952,241 @@ struct MonitoringScreen: View {
         let date = Date(timeIntervalSince1970: TimeInterval(instant.toEpochMilliseconds()) / 1000)
         return DateFormatter.snapvetClock.string(from: date)
     }
+
+    private func formatBloodPressure(sys: Int?, dia: Int?, map: Int?) -> String {
+        if let sys, let dia, let map {
+            return "\(sys)/\(dia) (\(map))"
+        }
+        if let sys, let dia {
+            return "\(sys)/\(dia)"
+        }
+        if let map {
+            return "MAP \(map)"
+        }
+        return "—"
+    }
+
+    private var ecgOtherEditor: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Enter custom ECG value")
+                    .font(SnapVetFont.titleMedium)
+                    .foregroundColor(.snapvetTextSecondary)
+
+                TextField("Type ECG value", text: $ecgOtherInput)
+                    .textInputAutocapitalization(.words)
+                    .padding(.horizontal, 14)
+                    .frame(height: 46)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .fill(Color.snapvetHeaderBg.opacity(0.5))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .stroke(Color.snapvetBorderSubtle, lineWidth: 1)
+                    )
+                    .foregroundColor(.snapvetTextPrimary)
+
+                Spacer()
+            }
+            .padding(16)
+            .navigationTitle("ECG Other")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        showEcgOtherEditor = false
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        viewModel.updateEcg(name: "OTHER")
+                        viewModel.updateEcgOtherText(ecgOtherInput)
+                        showEcgOtherEditor = false
+                    }
+                }
+            }
+        }
+    }
+
+    private var bloodPressureEditor: some View {
+        VStack(spacing: 12) {
+            HStack {
+                Button("Cancel") {
+                    showBpEditor = false
+                }
+                .font(SnapVetFont.titleMedium.weight(.semibold))
+
+                Spacer()
+
+                Text("Blood Pressure")
+                    .font(SnapVetFont.headlineMedium.weight(.semibold))
+                    .foregroundColor(.snapvetTextPrimary)
+
+                Spacer()
+
+                Button("Save") {
+                    applyBloodPressureInputs()
+                    showBpEditor = false
+                }
+                .font(SnapVetFont.titleMedium.weight(.semibold))
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .fill(Color.snapvetHeaderBg.opacity(0.75))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .stroke(Color.snapvetBorderSubtle, lineWidth: 1)
+            )
+            .padding(.horizontal, 12)
+            .padding(.top, 24)
+            .padding(.bottom, 8)
+
+            VStack(spacing: 12) {
+                VStack(spacing: 8) {
+                    ForEach(BloodPressureEditorField.allCases, id: \.shortLabel) { field in
+                        Button {
+                            selectedBpField = field
+                            feedbackSelection()
+                        } label: {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("\(field.shortLabel) - \(field.fullLabel)")
+                                        .font(SnapVetFont.bodySmall)
+                                        .foregroundColor(.snapvetTextSecondary)
+                                    Text(bpFieldValue(field).isEmpty ? "—" : bpFieldValue(field))
+                                        .font(SnapVetFont.titleMedium.weight(.semibold))
+                                        .foregroundColor(.snapvetTextPrimary)
+                                }
+                                Spacer()
+                                if selectedBpField == field {
+                                    Image(systemName: "checkmark.circle.fill")
+                                        .foregroundColor(.snapvetAccentPrimary)
+                                }
+                            }
+                            .padding(12)
+                            .background(
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .fill(Color.snapvetHeaderBg.opacity(0.55))
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                    .stroke(
+                                        selectedBpField == field ? Color.snapvetAccentPrimary : Color.snapvetBorderSubtle,
+                                        lineWidth: 1
+                                    )
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+
+                NumericKeypadView(
+                    currentValue: Binding(
+                        get: { bpFieldValue(selectedBpField) },
+                        set: { newValue in
+                            updateBpField(selectedBpField) { _ in newValue }
+                        }
+                    ),
+                    unitLabel: "mmHg",
+                    showsDecimalKey: false,
+                    onNumberTap: { number in
+                        feedbackSelection()
+                        updateBpField(selectedBpField) { $0 + number }
+                    },
+                    onDecimalTap: {},
+                    onBackspaceTap: {
+                        feedbackSelection()
+                        updateBpField(selectedBpField) { value in
+                            guard !value.isEmpty else { return value }
+                            return String(value.dropLast())
+                        }
+                    },
+                    onConfirm: {
+                        feedbackSaveAction()
+                        if let nextField = nextBpField(after: selectedBpField) {
+                            selectedBpField = nextField
+                        } else {
+                            applyBloodPressureInputs()
+                            showBpEditor = false
+                        }
+                    },
+                    onClear: {
+                        feedbackSelection()
+                        updateBpField(selectedBpField) { _ in "" }
+                    },
+                    onCancel: {
+                        SnapVetHaptics.lightTap()
+                        showBpEditor = false
+                    }
+                )
+            }
+            .padding(.horizontal, 12)
+            .padding(.bottom, 20)
+        }
+    }
+
+    private func applyBloodPressureInputs() {
+        let sys = kotlinInt(bpSysInput)
+        let dia = kotlinInt(bpDiaInput)
+        let map = bpMapInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            ? computeMap(sys: sys, dia: dia)
+            : kotlinInt(bpMapInput)
+
+        viewModel.updateVitals(
+            VitalsInput(
+                hr: current.hr,
+                rr: current.rr,
+                spo2: current.spo2,
+                etco2: current.etco2,
+                bpSys: sys,
+                bpDia: dia,
+                bpMap: map,
+                temp: current.temp,
+                sevoIso: current.sevoIso,
+                o2Flow: current.o2Flow,
+                fluids: current.fluids,
+                ecg: current.ecg,
+                ecgOtherText: current.ecgOtherText,
+                crt: current.crt,
+                pulseQuality: current.pulseQuality,
+                mucousMembrane: current.mucousMembrane,
+                notes: current.notes
+            )
+        )
+    }
+
+    private func bpFieldValue(_ field: BloodPressureEditorField) -> String {
+        switch field {
+        case .sap: return bpSysInput
+        case .dap: return bpDiaInput
+        case .map: return bpMapInput
+        }
+    }
+
+    private func updateBpField(_ field: BloodPressureEditorField, transform: (String) -> String) {
+        switch field {
+        case .sap: bpSysInput = transform(bpSysInput)
+        case .dap: bpDiaInput = transform(bpDiaInput)
+        case .map: bpMapInput = transform(bpMapInput)
+        }
+    }
+
+    private func nextBpField(after field: BloodPressureEditorField) -> BloodPressureEditorField? {
+        switch field {
+        case .sap: return .dap
+        case .dap: return .map
+        case .map: return nil
+        }
+    }
+}
+
+private enum SpeciesProfile {
+    case canine
+    case feline
 }
 
 private extension DateFormatter {

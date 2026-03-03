@@ -12,7 +12,7 @@ import kotlin.time.Instant
 class SyncCatalogFromSeedUsecaseTest {
 
     @Test
-    fun syncCatalogFromSeed_insertsItemsForBothKinds() = runBlocking {
+    fun syncCatalogFromSeed_insertsProcedureItems() = runBlocking {
         val repository = InMemoryCatalogRepository()
         val usecase = SyncCatalogFromSeedUsecase(
             catalogRepository = repository,
@@ -24,19 +24,16 @@ class SyncCatalogFromSeedUsecaseTest {
             {
               "items": [
                 { "id": "proc_spay", "kind": "PROCEDURE", "code": "spay", "displayName": "Spay", "sortOrder": 20 },
-                { "id": "proc_dental", "kind": "PROCEDURE", "code": "dental", "displayName": "Dental", "sortOrder": 10 },
-                { "id": "prot_iso", "kind": "PROTOCOL", "code": "isoflurane", "displayName": "Isoflurane", "sortOrder": 5 }
+                { "id": "proc_dental", "kind": "PROCEDURE", "code": "dental", "displayName": "Dental", "sortOrder": 10 }
               ]
             }
             """.trimIndent()
         )
 
         val procedures = repository.observeActive(CatalogKind.PROCEDURE, query = "").first()
-        val protocols = repository.observeActive(CatalogKind.PROTOCOL, query = "").first()
 
-        assertEquals(3, inserted)
+        assertEquals(2, inserted)
         assertEquals(listOf("Dental", "Spay"), procedures.map { it.displayName })
-        assertEquals(listOf("Isoflurane"), protocols.map { it.displayName })
     }
 
     @Test
@@ -84,14 +81,14 @@ class SyncCatalogFromSeedUsecaseTest {
             """
             {
               "items": [
-                { "id": "prot_iso", "kind": "PROTOCOL", "code": "isoflurane", "displayName": "Isoflurane", "sortOrder": 10 },
-                { "id": "prot_sevo", "kind": "PROTOCOL", "code": "sevoflurane", "displayName": "Sevoflurane", "sortOrder": 20 }
+                { "id": "proc_iso", "kind": "PROCEDURE", "code": "isoflurane", "displayName": "Isoflurane", "sortOrder": 10 },
+                { "id": "proc_sevo", "kind": "PROCEDURE", "code": "sevoflurane", "displayName": "Sevoflurane", "sortOrder": 20 }
               ]
             }
             """.trimIndent()
         )
 
-        val filtered = observeUsecase(CatalogKind.PROTOCOL, "SEVO").first()
+        val filtered = observeUsecase(CatalogKind.PROCEDURE, "SEVO").first()
         assertEquals(listOf("Sevoflurane"), filtered.map { it.displayName })
     }
 }

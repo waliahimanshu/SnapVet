@@ -40,7 +40,7 @@ fun CaseListScreen(viewModel: CaseListViewModel) {
 }
 
 private fun displaySpecies(species: Species): String {
-    return if (species == Species.DOG) "Dog" else "Cat"
+    return if (species == Species.DOG) "Canine" else "Feline"
 }
 
 private fun displayWeight(value: Double): String {

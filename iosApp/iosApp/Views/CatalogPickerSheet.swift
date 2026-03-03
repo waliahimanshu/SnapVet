@@ -22,30 +22,52 @@ struct CatalogPickerSheet: View {
                 }
 
                 if viewModel.state.items.isEmpty {
-                    Text("No matches")
-                        .font(SnapVetFont.bodyMedium)
-                        .foregroundColor(.snapvetTextSecondary)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                        .padding(.top, 12)
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("No matches")
+                            .font(SnapVetFont.bodyMedium)
+                            .foregroundColor(.snapvetTextSecondary)
+                        addCustomButton
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .padding(.top, 12)
                 } else {
-                    List(viewModel.state.items, id: \.code) { item in
-                        Button {
-                            SnapVetHaptics.selection()
-                            onSelect(item)
-                            dismiss()
-                        } label: {
+                    List {
+                        ForEach(viewModel.state.items, id: \.code) { item in
+                            Button {
+                                SnapVetHaptics.selection()
+                                onSelect(item)
+                                dismiss()
+                            } label: {
                             HStack(spacing: 10) {
                                 Text(item.displayName)
                                     .foregroundColor(.snapvetTextPrimary)
+
+                                if item.source == .custom {
+                                    Text("Custom")
+                                        .font(SnapVetFont.bodySmall.weight(.semibold))
+                                        .foregroundColor(.snapvetAccentPrimary)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 2)
+                                        .background(
+                                            Capsule()
+                                                .fill(Color.snapvetAccentPrimary.opacity(0.18))
+                                        )
+                                }
                                 Spacer()
                                 if selectedValue == item.displayName {
                                     Image(systemName: "checkmark")
                                         .foregroundColor(.snapvetAccentPrimary)
                                 }
+                                }
+                                .padding(.vertical, 6)
                             }
-                            .padding(.vertical, 6)
+                            .listRowBackground(Color.snapvetTileBg)
                         }
-                        .listRowBackground(Color.snapvetTileBg)
+
+                        if shouldShowAddCustom {
+                            addCustomButton
+                                .listRowBackground(Color.snapvetTileBg)
+                        }
                     }
                     .scrollContentBackground(.hidden)
                 }
@@ -105,5 +127,37 @@ struct CatalogPickerSheet: View {
             RoundedRectangle(cornerRadius: 10, style: .continuous)
                 .stroke(Color.snapvetBorderSubtle, lineWidth: 1)
         )
+    }
+
+    private var trimmedQuery: String {
+        viewModel.state.query.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var shouldShowAddCustom: Bool {
+        guard !trimmedQuery.isEmpty else { return false }
+        return !viewModel.state.items.contains { $0.displayName.caseInsensitiveCompare(trimmedQuery) == .orderedSame }
+    }
+
+    private var addCustomButton: some View {
+        Button {
+            SnapVetHaptics.selection()
+            Task { @MainActor in
+                if let item = await viewModel.addCustom(displayName: trimmedQuery) {
+                    onSelect(item)
+                    dismiss()
+                }
+            }
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "plus.circle.fill")
+                    .foregroundColor(.snapvetAccentPrimary)
+                Text("Add \"\(trimmedQuery)\"")
+                    .foregroundColor(.snapvetTextPrimary)
+                Spacer()
+            }
+            .padding(.vertical, 6)
+        }
+        .buttonStyle(.plain)
+        .disabled(trimmedQuery.isEmpty)
     }
 }

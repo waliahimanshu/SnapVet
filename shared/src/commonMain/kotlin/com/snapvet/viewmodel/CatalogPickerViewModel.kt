@@ -2,6 +2,7 @@ package com.snapvet.viewmodel
 
 import com.snapvet.domain.model.CatalogItem
 import com.snapvet.domain.model.CatalogKind
+import com.snapvet.domain.usecase.AddCustomCatalogItemUsecase
 import com.snapvet.domain.usecase.ObserveCatalogItemsUsecase
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -15,6 +16,7 @@ import kotlinx.coroutines.launch
 class CatalogPickerViewModel(
     private val kind: CatalogKind,
     private val observeCatalogItemsUsecase: ObserveCatalogItemsUsecase,
+    private val addCustomCatalogItemUsecase: AddCustomCatalogItemUsecase,
     scope: CoroutineScope? = null
 ) : BaseViewModel(scope) {
 
@@ -30,6 +32,13 @@ class CatalogPickerViewModel(
     fun updateQuery(value: String) {
         _state.value = _state.value.copy(query = value)
         observe(query = value)
+    }
+
+    suspend fun addCustom(displayName: String): CatalogItem {
+        val created = addCustomCatalogItemUsecase(kind = kind, displayName = displayName)
+        val currentQuery = _state.value.query
+        observe(query = currentQuery)
+        return created
     }
 
     private fun observe(query: String) {

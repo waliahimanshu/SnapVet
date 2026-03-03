@@ -5,6 +5,7 @@ import com.snapvet.domain.model.VitalsInput
 import com.snapvet.domain.model.CRTReading
 import com.snapvet.domain.model.ECGReading
 import com.snapvet.domain.model.MucousMembraneReading
+import com.snapvet.domain.model.PulseQuality
 import com.snapvet.domain.usecase.GetLatestVitalRecordUsecase
 import com.snapvet.domain.usecase.ObserveVitalRecordsUsecase
 import com.snapvet.domain.usecase.SaveVitalsUsecase
@@ -45,6 +46,13 @@ class MonitoringViewModel(
         _state.value = _state.value.copy(currentVitals = _state.value.currentVitals.copy(ecg = ecg))
     }
 
+    fun updateEcgOtherText(value: String?) {
+        val normalized = value?.trim()?.takeIf { it.isNotBlank() }
+        _state.value = _state.value.copy(
+            currentVitals = _state.value.currentVitals.copy(ecgOtherText = normalized)
+        )
+    }
+
     fun updateCrt(name: String?) {
         val crt = name?.let { runCatching { CRTReading.valueOf(it) }.getOrNull() }
         _state.value = _state.value.copy(currentVitals = _state.value.currentVitals.copy(crt = crt))
@@ -54,6 +62,13 @@ class MonitoringViewModel(
         val mucousMembrane = name?.let { runCatching { MucousMembraneReading.valueOf(it) }.getOrNull() }
         _state.value = _state.value.copy(
             currentVitals = _state.value.currentVitals.copy(mucousMembrane = mucousMembrane)
+        )
+    }
+
+    fun updatePulseQuality(name: String?) {
+        val pulseQuality = name?.let { runCatching { PulseQuality.valueOf(it) }.getOrNull() }
+        _state.value = _state.value.copy(
+            currentVitals = _state.value.currentVitals.copy(pulseQuality = pulseQuality)
         )
     }
 
@@ -128,8 +143,11 @@ data class MonitoringState(
         temp = null,
         sevoIso = null,
         o2Flow = null,
+        fluids = null,
         ecg = null,
+        ecgOtherText = null,
         crt = null,
+        pulseQuality = null,
         mucousMembrane = null,
         notes = null
     ),

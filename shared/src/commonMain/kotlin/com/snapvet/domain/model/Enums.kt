@@ -9,18 +9,29 @@ enum class ECGReading {
     SINUS_BRADY,
     SINUS_TACHY,
     VPCS,
-    ATRIAL_FIB
+    ATRIAL_FIB,
+    ASYSTOLE,
+    OTHER
 }
 
 enum class CRTReading {
-    LESS_THAN_2_SEC,
-    GREATER_THAN_2_SEC
+    LESS_THAN_1_SEC,
+    BETWEEN_1_AND_2_SEC,
+    BETWEEN_2_AND_3_SEC,
+    GREATER_THAN_3_SEC
 }
 
 enum class MucousMembraneReading {
     PINK,
     PALE,
     BLUE,
-    GREY,
-    MUDDY
+    INJECTED,
+    ICTERIC
+}
+
+enum class PulseQuality {
+    STRONG,
+    MODERATE,
+    WEAK,
+    ABSENT
 }

@@ -17,7 +17,6 @@ final class AppState: ObservableObject {
     let caseListWrapper: CaseListViewModelWrapper
     let caseSetupWrapper: CaseSetupViewModelWrapper
     let procedureCatalogWrapper: CatalogPickerViewModelWrapper
-    let protocolCatalogWrapper: CatalogPickerViewModelWrapper
     @Published var monitoringWrapper: MonitoringViewModelWrapper?
 
     init() {
@@ -61,17 +60,14 @@ final class AppState: ObservableObject {
             viewModel: CatalogPickerViewModel(
                 kind: CatalogKind.procedure,
                 observeCatalogItemsUsecase: observeCatalogItemsUsecase,
+                addCustomCatalogItemUsecase: AddCustomCatalogItemUsecase(
+                    catalogRepository: provider.catalogRepository(),
+                    idGenerator: RandomIdGenerator(),
+                    timeProvider: SystemTimeProvider()
+                ),
                 scope: nil
             )
         )
-        self.protocolCatalogWrapper = CatalogPickerViewModelWrapper(
-            viewModel: CatalogPickerViewModel(
-                kind: CatalogKind.protocol,
-                observeCatalogItemsUsecase: observeCatalogItemsUsecase,
-                scope: nil
-            )
-        )
-
         syncCatalogSeed()
     }
 

@@ -63,6 +63,10 @@ final class CatalogPickerViewModelWrapper: ObservableObject {
     }
 
     func updateQuery(_ value: String) { viewModel.updateQuery(value: value) }
+
+    func addCustom(displayName: String) async -> CatalogItem? {
+        try? await viewModel.addCustom(displayName: displayName)
+    }
 }
 
 private func kotlinDouble(_ value: Double?) -> KotlinDouble? {
@@ -114,12 +118,20 @@ final class MonitoringViewModelWrapper: ObservableObject {
         viewModel.updateEcg(name: name)
     }
 
+    func updateEcgOtherText(_ value: String?) {
+        viewModel.updateEcgOtherText(value: value)
+    }
+
     func updateCrt(name: String?) {
         viewModel.updateCrt(name: name)
     }
 
     func updateMucousMembrane(name: String?) {
         viewModel.updateMucousMembrane(name: name)
+    }
+
+    func updatePulseQuality(name: String?) {
+        viewModel.updatePulseQuality(name: name)
     }
 
     func updateNotes(_ value: String?) {

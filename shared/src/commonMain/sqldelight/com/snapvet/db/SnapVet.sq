@@ -24,8 +24,11 @@ CREATE TABLE vital_records (
     temp REAL,
     sevo_iso REAL,
     o2_flow REAL,
+    fluids REAL,
     ecg TEXT,
+    ecg_other_text TEXT,
     crt TEXT,
+    pulse_quality TEXT,
     mucous_membrane TEXT,
     notes TEXT
 );
@@ -93,11 +96,14 @@ INSERT INTO vital_records(
     temp,
     sevo_iso,
     o2_flow,
+    fluids,
     ecg,
+    ecg_other_text,
     crt,
+    pulse_quality,
     mucous_membrane,
     notes
-) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 selectVitalRecordsForCase:
 SELECT * FROM vital_records WHERE case_id = ? ORDER BY timestamp DESC;

@@ -228,6 +228,16 @@ enum class MucousMembraneReading { PINK, PALE, BLUE, GREY, MUDDY }
 - The app uses a dark medical-grade UI theme (dark blue-gray backgrounds with medical green accents)
 - Always dark theme — `SnapVetTheme` ignores light/dark toggle and always uses `DarkColorScheme`
 
+## iOS SwiftUI Compile Guardrails (Learnings)
+
+- `NumericKeypadView` `currentValue` must always be a `Binding<String>`. If the source is computed (`bpFieldValue(...)`), wrap with `Binding(get:set:)` instead of passing a plain `String`.
+- For numeric-only BP input (SAP/DAP/MAP), disable decimal entry at keypad level (`showsDecimalKey: false`) and keep values as integer strings.
+- Keep type alignment explicit between Swift and KMP bridge types:
+  - UI formatting helpers should use `Int?` when passing `KotlinInt?.intValue`.
+  - KMP model fields still receive `KotlinInt?` through conversion helpers (`kotlinInt(...)`) at update boundaries.
+- If a function expects `Int32?`, do not pass `Int?` directly. Either change the function to `Int?` for UI-only formatting or cast intentionally at the boundary.
+- Prefer handling numeric conversions in one place (update/apply functions) to avoid repeated `Int`/`Int32` mismatch errors across views.
+
 ## Key Technical Details
 
 - Kotlin 2.3.0, Compose Multiplatform 1.10.0, Ktor 3.3.3

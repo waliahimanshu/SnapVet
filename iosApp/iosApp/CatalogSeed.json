@@ -1,40 +1,75 @@
 {
-  "seedVersion": 1,
+  "seedVersion": 3,
   "items": [
-    { "id": "proc_spay_ovh", "kind": "PROCEDURE", "code": "spay_ovh", "displayName": "Spay (OVH / OHE)", "sortOrder": 10 },
-    { "id": "proc_neuter_castration", "kind": "PROCEDURE", "code": "neuter_castration", "displayName": "Neuter (castration)", "sortOrder": 20 },
-    { "id": "proc_dental_scale_polish", "kind": "PROCEDURE", "code": "dental_scale_polish", "displayName": "Dental scale & polish", "sortOrder": 30 },
-    { "id": "proc_dental_extraction", "kind": "PROCEDURE", "code": "dental_extraction", "displayName": "Dental extraction", "sortOrder": 40 },
-    { "id": "proc_lump_mass_removal", "kind": "PROCEDURE", "code": "lump_mass_removal", "displayName": "Lump / mass removal", "sortOrder": 50 },
-    { "id": "proc_wound_repair", "kind": "PROCEDURE", "code": "wound_repair", "displayName": "Wound repair", "sortOrder": 60 },
-    { "id": "proc_laceration_suturing", "kind": "PROCEDURE", "code": "laceration_suturing", "displayName": "Laceration suturing", "sortOrder": 70 },
-    { "id": "proc_abscess_drainage", "kind": "PROCEDURE", "code": "abscess_drainage", "displayName": "Abscess drainage", "sortOrder": 80 },
-    { "id": "proc_c_section", "kind": "PROCEDURE", "code": "c_section", "displayName": "C-section", "sortOrder": 90 },
-    { "id": "proc_exploratory_laparotomy", "kind": "PROCEDURE", "code": "exploratory_laparotomy", "displayName": "Exploratory laparotomy", "sortOrder": 100 },
-    { "id": "proc_orthopaedic_tplo_fracture", "kind": "PROCEDURE", "code": "orthopaedic_tplo_fracture", "displayName": "Orthopaedic (TPLO, fracture repair)", "sortOrder": 110 },
-    { "id": "proc_endoscopy", "kind": "PROCEDURE", "code": "endoscopy", "displayName": "Endoscopy", "sortOrder": 120 },
-    { "id": "proc_imaging_under_ga", "kind": "PROCEDURE", "code": "imaging_under_ga", "displayName": "Imaging under GA (CT / MRI)", "sortOrder": 130 },
-
-    { "id": "prot_medetomidine", "kind": "PROTOCOL", "code": "medetomidine", "displayName": "Medetomidine", "sortOrder": 210 },
-    { "id": "prot_dexmedetomidine", "kind": "PROTOCOL", "code": "dexmedetomidine", "displayName": "Dexmedetomidine", "sortOrder": 220 },
-    { "id": "prot_acepromazine", "kind": "PROTOCOL", "code": "acepromazine", "displayName": "Acepromazine", "sortOrder": 230 },
-    { "id": "prot_methadone", "kind": "PROTOCOL", "code": "methadone", "displayName": "Methadone", "sortOrder": 240 },
-    { "id": "prot_buprenorphine", "kind": "PROTOCOL", "code": "buprenorphine", "displayName": "Buprenorphine", "sortOrder": 250 },
-    { "id": "prot_butorphanol", "kind": "PROTOCOL", "code": "butorphanol", "displayName": "Butorphanol", "sortOrder": 260 },
-    { "id": "prot_atropine", "kind": "PROTOCOL", "code": "atropine", "displayName": "Atropine", "sortOrder": 270 },
-    { "id": "prot_glycopyrrolate", "kind": "PROTOCOL", "code": "glycopyrrolate", "displayName": "Glycopyrrolate", "sortOrder": 280 },
-    { "id": "prot_propofol", "kind": "PROTOCOL", "code": "propofol", "displayName": "Propofol", "sortOrder": 290 },
-    { "id": "prot_alfaxalone", "kind": "PROTOCOL", "code": "alfaxalone", "displayName": "Alfaxalone", "sortOrder": 300 },
-    { "id": "prot_ketamine_benzo", "kind": "PROTOCOL", "code": "ketamine_benzo", "displayName": "Ketamine + benzodiazepine", "sortOrder": 310 },
-    { "id": "prot_mask_induction_cats", "kind": "PROTOCOL", "code": "mask_induction_cats", "displayName": "Mask induction (cats)", "sortOrder": 320 },
-    { "id": "prot_isoflurane", "kind": "PROTOCOL", "code": "isoflurane", "displayName": "Isoflurane", "sortOrder": 330 },
-    { "id": "prot_sevoflurane", "kind": "PROTOCOL", "code": "sevoflurane", "displayName": "Sevoflurane", "sortOrder": 340 },
-    { "id": "prot_tiva_propofol_cri", "kind": "PROTOCOL", "code": "tiva_propofol_cri", "displayName": "TIVA (Propofol CRI)", "sortOrder": 350 },
-    { "id": "prot_oxygen_only", "kind": "PROTOCOL", "code": "oxygen_only", "displayName": "Oxygen only", "sortOrder": 360 },
-    { "id": "prot_oxygen_air", "kind": "PROTOCOL", "code": "oxygen_air", "displayName": "Oxygen + Air", "sortOrder": 370 },
-    { "id": "prot_nsaid_meloxicam_carprofen", "kind": "PROTOCOL", "code": "nsaid_meloxicam_carprofen", "displayName": "NSAID (Meloxicam / Carprofen)", "sortOrder": 380 },
-    { "id": "prot_local_block", "kind": "PROTOCOL", "code": "local_block", "displayName": "Local block", "sortOrder": 390 },
-    { "id": "prot_epidural", "kind": "PROTOCOL", "code": "epidural", "displayName": "Epidural", "sortOrder": 400 },
-    { "id": "prot_cri_fentanyl_ketamine", "kind": "PROTOCOL", "code": "cri_fentanyl_ketamine", "displayName": "CRI (Fentanyl / Ketamine)", "sortOrder": 410 }
+    {
+      "id": "proc_abdominal_surgery",
+      "kind": "PROCEDURE",
+      "code": "abdominal_surgery",
+      "displayName": "Abdominal Surgery",
+      "sortOrder": 10
+    },
+    {
+      "id": "proc_alteration_surgery",
+      "kind": "PROCEDURE",
+      "code": "alteration_surgery",
+      "displayName": "Alteration Surgery",
+      "sortOrder": 20
+    },
+    {
+      "id": "proc_cohat",
+      "kind": "PROCEDURE",
+      "code": "cohat",
+      "displayName": "COHAT",
+      "sortOrder": 30
+    },
+    {
+      "id": "proc_hernia_repair",
+      "kind": "PROCEDURE",
+      "code": "hernia_repair",
+      "displayName": "Hernia Repair",
+      "sortOrder": 40
+    },
+    {
+      "id": "proc_laceration_repair",
+      "kind": "PROCEDURE",
+      "code": "laceration_repair",
+      "displayName": "Laceration Repair",
+      "sortOrder": 50
+    },
+    {
+      "id": "proc_mass_removal",
+      "kind": "PROCEDURE",
+      "code": "mass_removal",
+      "displayName": "Mass Removal",
+      "sortOrder": 60
+    },
+    {
+      "id": "proc_orthopedic_fracture_repair",
+      "kind": "PROCEDURE",
+      "code": "orthopedic_fracture_repair",
+      "displayName": "Orthopedic Fracture Repair",
+      "sortOrder": 70
+    },
+    {
+      "id": "proc_orthopedic_other",
+      "kind": "PROCEDURE",
+      "code": "orthopedic_other",
+      "displayName": "Orthopedic Other",
+      "sortOrder": 80
+    },
+    {
+      "id": "proc_orthopedic_tplo",
+      "kind": "PROCEDURE",
+      "code": "orthopedic_tplo",
+      "displayName": "Orthopedic TPLO",
+      "sortOrder": 90
+    },
+    {
+      "id": "proc_other",
+      "kind": "PROCEDURE",
+      "code": "other",
+      "displayName": "Other",
+      "sortOrder": 999
+    }
   ]
 }

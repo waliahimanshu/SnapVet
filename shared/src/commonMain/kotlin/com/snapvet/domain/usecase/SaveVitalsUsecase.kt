@@ -26,8 +26,11 @@ class SaveVitalsUsecase(
             temp = input.temp,
             sevoIso = input.sevoIso,
             o2Flow = input.o2Flow,
+            fluids = input.fluids,
             ecg = input.ecg,
+            ecgOtherText = input.ecgOtherText,
             crt = input.crt,
+            pulseQuality = input.pulseQuality,
             mucousMembrane = input.mucousMembrane,
             notes = input.notes
         )

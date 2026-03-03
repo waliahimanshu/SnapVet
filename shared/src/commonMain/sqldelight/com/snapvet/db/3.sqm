@@ -1,0 +1,2 @@
+ALTER TABLE vital_records ADD COLUMN fluids REAL;
+ALTER TABLE vital_records ADD COLUMN pulse_quality TEXT;

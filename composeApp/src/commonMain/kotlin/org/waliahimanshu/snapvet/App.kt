@@ -115,7 +115,7 @@ fun App(provider: RepositoryProvider) {
                         MonitoringScreen(
                             viewModel = viewModel,
                             patientName = activeCase?.patientName.orEmpty(),
-                            species = activeCase?.species?.name.orEmpty(),
+                            species = activeCase?.species?.let { if (it == com.snapvet.domain.model.Species.DOG) "Canine" else "Feline" }.orEmpty(),
                             weight = activeCase?.weight?.toString().orEmpty(),
                             onEndSession = { selectedTab = AppTab.Records }
                         )

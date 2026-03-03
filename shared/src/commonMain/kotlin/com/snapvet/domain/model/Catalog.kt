@@ -3,8 +3,7 @@ package com.snapvet.domain.model
 import kotlin.time.Instant
 
 enum class CatalogKind {
-    PROCEDURE,
-    PROTOCOL
+    PROCEDURE
 }
 
 enum class CatalogSource {

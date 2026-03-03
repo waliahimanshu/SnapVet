@@ -4,10 +4,10 @@ import UIKit
 
 struct CaseListScreen: View {
     @ObservedObject var viewModel: CaseListViewModelWrapper
-    var isDarkMode: Bool = true
-    var onThemeToggle: () -> Void = {}
+    var onOpenSettings: () -> Void = {}
     var onNewCase: () -> Void = {}
     var onCaseSelected: (Case) -> Void = { _ in }
+    @AppStorage("snapvet_weight_unit") private var weightUnitRawValue = WeightUnit.lb.rawValue
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
@@ -20,7 +20,7 @@ struct CaseListScreen: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    themeToggleRow
+                    topBar
                     header
 
                     caseHistoryHeader
@@ -46,23 +46,24 @@ struct CaseListScreen: View {
         }
     }
 
-    private var themeToggleRow: some View {
+    private var topBar: some View {
         HStack {
             Spacer()
-            Toggle(
-                "",
-                isOn: Binding(
-                    get: { isDarkMode },
-                    set: { _ in
-                        SnapVetHaptics.selection()
-                        onThemeToggle()
-                    }
-                )
-            )
-            .labelsHidden()
-            .tint(.snapvetAccentPrimary)
-            .accessibilityLabel("Theme")
-            .accessibilityValue(isDarkMode ? "Dark" : "Light")
+            Button {
+                SnapVetHaptics.selection()
+                onOpenSettings()
+            } label: {
+                Image(systemName: "gearshape")
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.snapvetTextPrimary)
+                    .padding(10)
+                    .background(
+                        Circle()
+                            .fill(Color.snapvetHeaderBg.opacity(0.65))
+                    )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Settings")
         }
         .frame(maxWidth: .infinity, alignment: .trailing)
     }
@@ -144,14 +145,16 @@ struct CaseListScreen: View {
     }
 
     private func displaySpecies(_ species: Species) -> String {
-        species == .dog ? "Dog" : "Cat"
+        species == .dog ? "Canine" : "Feline"
     }
 
     private func displayWeight(_ value: Double) -> String {
-        if value.rounded() == value {
-            return "\(Int(value)) lb"
+        let unit = WeightUnit(rawValue: weightUnitRawValue) ?? .lb
+        let displayed = unit == .kg ? (value / 2.20462) : value
+        if displayed.rounded() == displayed {
+            return "\(Int(displayed)) \(unit.title)"
         }
-        return String(format: "%.1f lb", value)
+        return String(format: "%.1f %@", displayed, unit.title)
     }
 
     private func formatDate(_ instant: KotlinInstant) -> String {

@@ -55,7 +55,7 @@ fun AndroidApp() {
                         MonitoringScreen(
                             viewModel = viewModel,
                             patientName = caseInfo?.patientName.orEmpty(),
-                            species = caseInfo?.species?.name.orEmpty(),
+                            species = caseInfo?.species?.let { if (it == com.snapvet.domain.model.Species.DOG) "Canine" else "Feline" }.orEmpty(),
                             weight = caseInfo?.weight?.toString().orEmpty(),
                             onEndSession = appState::endSession
                         )

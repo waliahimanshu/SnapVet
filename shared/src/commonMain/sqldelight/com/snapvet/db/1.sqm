@@ -1,0 +1,33 @@
+CREATE TABLE cases (
+    id TEXT NOT NULL PRIMARY KEY,
+    patient_name TEXT NOT NULL,
+    species TEXT NOT NULL,
+    weight REAL NOT NULL,
+    procedure TEXT NOT NULL,
+    anesthetic_protocol TEXT NOT NULL,
+    start_time INTEGER NOT NULL,
+    end_time INTEGER,
+    status TEXT NOT NULL
+);
+
+CREATE TABLE vital_records (
+    id TEXT NOT NULL PRIMARY KEY,
+    case_id TEXT NOT NULL REFERENCES cases(id) ON DELETE CASCADE,
+    timestamp INTEGER NOT NULL,
+    hr INTEGER,
+    rr INTEGER,
+    spo2 INTEGER,
+    etco2 INTEGER,
+    bp_sys INTEGER,
+    bp_dia INTEGER,
+    bp_map INTEGER,
+    temp REAL,
+    sevo_iso REAL,
+    o2_flow REAL,
+    ecg TEXT,
+    crt TEXT,
+    mucous_membrane TEXT,
+    notes TEXT
+);
+
+CREATE INDEX vital_records_case_id_timestamp ON vital_records(case_id, timestamp);

@@ -19,6 +19,12 @@ class InMemoryCatalogRepository : CatalogRepository {
         this.items.value = byCode.values.toList()
     }
 
+    override suspend fun upsertCustom(item: CatalogItem) {
+        val byCode = this.items.value.associateBy { it.code }.toMutableMap()
+        byCode[item.code] = item
+        this.items.value = byCode.values.toList()
+    }
+
     override suspend fun deactivateMissingSeeded(codes: Set<String>, updatedAt: Instant) {
         val codeSet = codes.toSet()
         items.value = items.value.map { item ->

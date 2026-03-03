@@ -15,8 +15,8 @@ struct DesignSystemShowcaseView: View {
         ChipOption(id: "pink", label: "Pink (Normal)", color: Color(red: 1.0, green: 0.75, blue: 0.80)),
         ChipOption(id: "pale", label: "Pale", color: Color(red: 1.0, green: 0.94, blue: 0.96)),
         ChipOption(id: "cyanotic", label: "Cyanotic", color: Color(red: 0.6, green: 0.7, blue: 0.9)),
-        ChipOption(id: "grey", label: "Grey (Shock)", color: Color(red: 0.6, green: 0.6, blue: 0.6)),
-        ChipOption(id: "muddy", label: "Muddy", color: Color(red: 0.6, green: 0.45, blue: 0.3))
+        ChipOption(id: "injected", label: "Injected", color: Color(red: 0.95, green: 0.45, blue: 0.45)),
+        ChipOption(id: "icteric", label: "Icteric", color: Color(red: 0.98, green: 0.84, blue: 0.32))
     ]
 
     private let ecgOptions = [
@@ -28,8 +28,10 @@ struct DesignSystemShowcaseView: View {
     ]
 
     private let crtOptions = [
-        ChipOption(id: "lt2", label: "< 2 sec (Normal)", color: Color.snapvetTileBg),
-        ChipOption(id: "gt2", label: "> 2 sec (Delayed)", color: Color.snapvetTileBg)
+        ChipOption(id: "lt1", label: "< 1 sec", color: Color.snapvetTileBg),
+        ChipOption(id: "1to2", label: "1-2 sec (Normal)", color: Color.snapvetTileBg),
+        ChipOption(id: "2to3", label: "2-3 sec", color: Color.snapvetTileBg),
+        ChipOption(id: "gt3", label: "> 3 sec", color: Color.snapvetTileBg)
     ]
 
     var body: some View {

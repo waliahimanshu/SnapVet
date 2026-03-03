@@ -7,6 +7,7 @@ import kotlin.time.Instant
 
 interface CatalogRepository {
     suspend fun upsertSeeded(items: List<CatalogItem>)
+    suspend fun upsertCustom(item: CatalogItem)
     suspend fun deactivateMissingSeeded(codes: Set<String>, updatedAt: Instant)
     fun observeActive(kind: CatalogKind, query: String): Flow<List<CatalogItem>>
 }

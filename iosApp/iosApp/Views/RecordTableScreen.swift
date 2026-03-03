@@ -10,6 +10,8 @@ struct RecordTableScreen: View {
     @State private var sharePayload: ShareSheetPayload?
     @State private var exportErrorMessage: String?
     @State private var showDeleteConfirm = false
+    @AppStorage("snapvet_weight_unit") private var weightUnitRawValue = WeightUnit.lb.rawValue
+    @AppStorage("snapvet_temperature_unit") private var temperatureUnitRawValue = TemperatureUnit.celsius.rawValue
 
     private struct IndexedRecord: Identifiable {
         let index: Int
@@ -22,23 +24,26 @@ struct RecordTableScreen: View {
         let width: CGFloat
     }
 
-    private let columns: [(String, CGFloat)] = [
-        ("#", 42),
-        ("Time", 96),
-        ("HR", 58),
-        ("RR", 58),
-        ("SpO₂", 66),
-        ("EtCO₂", 72),
-        ("SBP", 62),
-        ("DBP", 62),
-        ("Temp", 62),
-        ("Iso", 54),
-        ("O₂", 54),
-        ("ECG", 94),
-        ("CRT", 112),
-        ("Mucous Membrane", 148),
-        ("Notes", 220)
-    ]
+    private var columns: [(String, CGFloat)] {
+        [
+            ("#", 42),
+            ("Time", 96),
+            ("HR", 58),
+            ("RR", 58),
+            ("SpO₂", 66),
+            ("EtCO₂", 72),
+            ("BP", 94),
+            ("Temp \(temperatureUnit.title)", 80),
+            ("Iso", 54),
+            ("O₂", 54),
+            ("Fluids", 70),
+            ("ECG", 94),
+            ("CRT", 112),
+            ("Pulse", 90),
+            ("Mucous Membrane", 148),
+            ("Notes", 220)
+        ]
+    }
 
     var body: some View {
         ZStack {
@@ -243,13 +248,14 @@ struct RecordTableScreen: View {
             RowCell(value: record.rr?.intValue.description ?? "-", width: 58),
             RowCell(value: record.spo2?.intValue.description ?? "-", width: 66),
             RowCell(value: record.etco2?.intValue.description ?? "-", width: 72),
-            RowCell(value: record.bpSys?.intValue.description ?? "-", width: 62),
-            RowCell(value: record.bpDia?.intValue.description ?? "-", width: 62),
-            RowCell(value: formatDouble(record.temp?.doubleValue), width: 62),
+            RowCell(value: formatBloodPressure(sys: record.bpSys?.intValue, dia: record.bpDia?.intValue, map: record.bpMap?.intValue), width: 94),
+            RowCell(value: formatTemperature(record.temp?.doubleValue), width: 80),
             RowCell(value: formatDouble(record.sevoIso?.doubleValue), width: 54),
             RowCell(value: formatDouble(record.o2Flow?.doubleValue), width: 54),
-            RowCell(value: displayEnum(record.ecg?.name), width: 94),
+            RowCell(value: formatDouble(record.fluids?.doubleValue), width: 70),
+            RowCell(value: formatEcg(record), width: 94),
             RowCell(value: displayEnum(record.crt?.name), width: 112),
+            RowCell(value: displayEnum(record.pulseQuality?.name), width: 90),
             RowCell(value: displayEnum(record.mucousMembrane?.name), width: 148),
             RowCell(value: record.notes ?? "-", width: 220)
         ]
@@ -288,14 +294,15 @@ struct RecordTableScreen: View {
     }
 
     private func displaySpecies(_ value: Species) -> String {
-        value == .dog ? "Dog" : "Cat"
+        value == .dog ? "Canine" : "Feline"
     }
 
     private func displayWeight(_ value: Double) -> String {
-        if value.rounded() == value {
-            return "\(Int(value)) lb"
+        let displayed = weightUnit == .kg ? (value / 2.20462) : value
+        if displayed.rounded() == displayed {
+            return "\(Int(displayed)) \(weightUnit.title)"
         }
-        return String(format: "%.1f lb", value)
+        return String(format: "%.1f %@", displayed, weightUnit.title)
     }
 
     private func displayEnum(_ raw: String?) -> String {
@@ -321,6 +328,43 @@ struct RecordTableScreen: View {
         return String(format: "%.1f", value)
     }
 
+    private func formatTemperature(_ value: Double?) -> String {
+        guard let value else { return "-" }
+        if temperatureUnit == .fahrenheit {
+            return formatDouble((value * 9.0 / 5.0) + 32.0)
+        }
+        return formatDouble(value)
+    }
+
+    private var weightUnit: WeightUnit {
+        WeightUnit(rawValue: weightUnitRawValue) ?? .lb
+    }
+
+    private var temperatureUnit: TemperatureUnit {
+        TemperatureUnit(rawValue: temperatureUnitRawValue) ?? .celsius
+    }
+
+    private func formatBloodPressure(sys: Int?, dia: Int?, map: Int?) -> String {
+        if let sys, let dia, let map {
+            return "\(sys)/\(dia) (\(map))"
+        }
+        if let sys, let dia {
+            return "\(sys)/\(dia)"
+        }
+        if let map {
+            return "MAP \(map)"
+        }
+        return "-"
+    }
+
+    private func formatEcg(_ record: VitalRecord) -> String {
+        if record.ecg?.name == "OTHER" {
+            let custom = record.ecgOtherText?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            return custom.isEmpty ? "Other" : custom
+        }
+        return displayEnum(record.ecg?.name)
+    }
+
     private func exportPdf() {
         do {
             let data = buildPdfData()
@@ -339,7 +383,9 @@ struct RecordTableScreen: View {
         let builder = RecordTablePdfBuilder(
             caseInfo: caseInfo,
             records: viewModel.state.records,
-            durationText: durationText
+            durationText: durationText,
+            weightUnit: weightUnit,
+            temperatureUnit: temperatureUnit
         )
         return builder.build()
     }
@@ -364,6 +410,8 @@ private struct RecordTablePdfBuilder {
     let caseInfo: Case
     let records: [VitalRecord]
     let durationText: String
+    let weightUnit: WeightUnit
+    let temperatureUnit: TemperatureUnit
 
     private let pageRect = CGRect(x: 0, y: 0, width: 842, height: 595) // A4 landscape @ 72dpi
     private let margin: CGFloat = 20
@@ -410,14 +458,14 @@ private struct RecordTablePdfBuilder {
             ("RR", 32),
             ("SpO₂", 38),
             ("EtCO₂", 44),
-            ("SBP", 36),
-            ("DBP", 36),
-            ("MAP", 36),
-            ("Temp", 40),
+            ("BP", 92),
+            ("Temp \(temperatureUnit.title)", 58),
             ("Iso", 34),
             ("O₂", 34),
+            ("Fluids", 44),
             ("ECG", 64),
             ("CRT", 56),
+            ("Pulse", 52),
             ("MM", 78)
         ]
     }
@@ -513,14 +561,14 @@ private struct RecordTablePdfBuilder {
                     record.rr?.intValue.description ?? "-",
                     record.spo2?.intValue.description ?? "-",
                     record.etco2?.intValue.description ?? "-",
-                    record.bpSys?.intValue.description ?? "-",
-                    record.bpDia?.intValue.description ?? "-",
-                    record.bpMap?.intValue.description ?? "-",
-                    formatDouble(record.temp?.doubleValue),
+                    formatBloodPressure(sys: record.bpSys?.intValue, dia: record.bpDia?.intValue, map: record.bpMap?.intValue),
+                    formatTemperature(record.temp?.doubleValue),
                     formatDouble(record.sevoIso?.doubleValue),
                     formatDouble(record.o2Flow?.doubleValue),
-                    displayEnum(record.ecg?.name),
+                    formatDouble(record.fluids?.doubleValue),
+                    formatEcg(record),
                     displayEnum(record.crt?.name),
+                    displayEnum(record.pulseQuality?.name),
                     displayEnum(record.mucousMembrane?.name),
                     notes
                 ]
@@ -589,14 +637,15 @@ private struct RecordTablePdfBuilder {
     }
 
     private func displaySpecies(_ value: Species) -> String {
-        value == .dog ? "Dog" : "Cat"
+        value == .dog ? "Canine" : "Feline"
     }
 
     private func displayWeight(_ value: Double) -> String {
-        if value.rounded() == value {
-            return "\(Int(value)) lb"
+        let displayed = weightUnit == .kg ? (value / 2.20462) : value
+        if displayed.rounded() == displayed {
+            return "\(Int(displayed)) \(weightUnit.title)"
         }
-        return String(format: "%.1f lb", value)
+        return String(format: "%.1f %@", displayed, weightUnit.title)
     }
 
     private func displayEnum(_ raw: String?) -> String {
@@ -612,6 +661,14 @@ private struct RecordTablePdfBuilder {
         return String(format: "%.1f", value)
     }
 
+    private func formatTemperature(_ value: Double?) -> String {
+        guard let value else { return "-" }
+        if temperatureUnit == .fahrenheit {
+            return formatDouble((value * 9.0 / 5.0) + 32.0)
+        }
+        return formatDouble(value)
+    }
+
     private func formatTime(_ instant: KotlinInstant) -> String {
         let date = Date(timeIntervalSince1970: TimeInterval(instant.toEpochMilliseconds()) / 1000)
         return DateFormatter.snapvetRecordTime.string(from: date)
@@ -620,6 +677,27 @@ private struct RecordTablePdfBuilder {
     private func formatDate(_ instant: KotlinInstant) -> String {
         let date = Date(timeIntervalSince1970: TimeInterval(instant.toEpochMilliseconds()) / 1000)
         return DateFormatter.snapvetRecordDate.string(from: date)
+    }
+
+    private func formatBloodPressure(sys: Int?, dia: Int?, map: Int?) -> String {
+        if let sys, let dia, let map {
+            return "\(sys)/\(dia) (\(map))"
+        }
+        if let sys, let dia {
+            return "\(sys)/\(dia)"
+        }
+        if let map {
+            return "MAP \(map)"
+        }
+        return "-"
+    }
+
+    private func formatEcg(_ record: VitalRecord) -> String {
+        if record.ecg?.name == "OTHER" {
+            let custom = record.ecgOtherText?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            return custom.isEmpty ? "Other" : custom
+        }
+        return displayEnum(record.ecg?.name)
     }
 }
 

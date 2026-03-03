@@ -31,8 +31,11 @@ class VitalRecordRepositoryImpl(
             temp = record.temp,
             sevo_iso = record.sevoIso,
             o2_flow = record.o2Flow,
+            fluids = record.fluids,
             ecg = record.ecg?.name,
+            ecg_other_text = record.ecgOtherText,
             crt = record.crt?.name,
+            pulse_quality = record.pulseQuality?.name,
             mucous_membrane = record.mucousMembrane?.name,
             notes = record.notes
         )

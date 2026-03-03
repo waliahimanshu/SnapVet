@@ -36,6 +36,7 @@ import com.snapvet.design.theme.SnapVetColors
 import com.snapvet.domain.model.CRTReading
 import com.snapvet.domain.model.ECGReading
 import com.snapvet.domain.model.MucousMembraneReading
+import com.snapvet.domain.model.PulseQuality
 import com.snapvet.domain.model.VitalsInput
 import com.snapvet.viewmodel.MonitoringViewModel
 
@@ -47,9 +48,11 @@ private enum class VitalField(val label: String, val unit: String) {
     TEMP("Temp", "°C"),
     SEVO("Iso/Sevo%", "%"),
     O2("O₂ Flow", "L/min"),
+    FLUIDS("Fluids", "ml/hr"),
     BP("BP", ""),
     ECG("ECG", ""),
     CRT("CRT", ""),
+    PULSE("Pulse", ""),
     MM("MM", ""),
     NOTES("Notes", "")
 }
@@ -118,9 +121,9 @@ fun MonitoringScreen(
                                     dia = state.currentVitals.bpDia?.toString().orEmpty(),
                                     map = state.currentVitals.bpMap?.toString().orEmpty()
                                 )
-                                VitalField.ECG, VitalField.CRT, VitalField.MM -> ActiveDialog.Chips(item.field)
+                                VitalField.ECG, VitalField.CRT, VitalField.MM, VitalField.PULSE -> ActiveDialog.Chips(item.field)
                                 VitalField.NOTES -> ActiveDialog.Notes(state.currentVitals.notes.orEmpty())
-                                VitalField.TEMP, VitalField.SEVO, VitalField.O2 -> ActiveDialog.Numeric(item.field, true)
+                                VitalField.TEMP, VitalField.SEVO, VitalField.O2, VitalField.FLUIDS -> ActiveDialog.Numeric(item.field, true)
                                 else -> ActiveDialog.Numeric(item.field, false)
                             }
                         }
@@ -217,8 +220,10 @@ private fun buildTileItems(current: VitalsInput, last: com.snapvet.domain.model.
         TileItem(VitalField.TEMP, "Temp", current.temp?.toString() ?: "—", "°C", ParameterStatus.NORMAL, last?.temp?.toString()),
         TileItem(VitalField.SEVO, "Iso/Sevo%", current.sevoIso?.toString() ?: "—", "%", ParameterStatus.NORMAL, last?.sevoIso?.toString()),
         TileItem(VitalField.O2, "O₂ Flow", current.o2Flow?.toString() ?: "—", "L/min", ParameterStatus.NORMAL, last?.o2Flow?.toString()),
+        TileItem(VitalField.FLUIDS, "Fluids", current.fluids?.toString() ?: "—", "ml/hr", ParameterStatus.NORMAL, last?.fluids?.toString()),
         TileItem(VitalField.ECG, "ECG", current.ecg?.name ?: "—", "", ParameterStatus.NORMAL, last?.ecg?.name),
         TileItem(VitalField.CRT, "CRT", current.crt?.name ?: "—", "", ParameterStatus.NORMAL, last?.crt?.name),
+        TileItem(VitalField.PULSE, "Pulse", current.pulseQuality?.name ?: "—", "", ParameterStatus.NORMAL, last?.pulseQuality?.name),
         TileItem(VitalField.MM, "MM", current.mucousMembrane?.name ?: "—", "", ParameterStatus.NORMAL, last?.mucousMembrane?.name),
         TileItem(VitalField.NOTES, "Notes", current.notes?.takeIf { it.isNotBlank() } ?: "—", "", ParameterStatus.NORMAL, last?.notes)
     )
@@ -320,15 +325,23 @@ private fun ChipDialog(
             ChipOption("ATRIAL_FIB", "Atrial Fib")
         )
         VitalField.CRT -> listOf(
-            ChipOption("LESS_THAN_2_SEC", "< 2 sec"),
-            ChipOption("GREATER_THAN_2_SEC", "> 2 sec")
+            ChipOption("LESS_THAN_1_SEC", "< 1 sec"),
+            ChipOption("BETWEEN_1_AND_2_SEC", "1-2 sec"),
+            ChipOption("BETWEEN_2_AND_3_SEC", "2-3 sec"),
+            ChipOption("GREATER_THAN_3_SEC", "> 3 sec")
         )
         VitalField.MM -> listOf(
             ChipOption("PINK", "Pink"),
             ChipOption("PALE", "Pale"),
             ChipOption("BLUE", "Blue"),
-            ChipOption("GREY", "Grey"),
-            ChipOption("MUDDY", "Muddy")
+            ChipOption("INJECTED", "Injected"),
+            ChipOption("ICTERIC", "Icteric")
+        )
+        VitalField.PULSE -> listOf(
+            ChipOption("STRONG", "Strong"),
+            ChipOption("MODERATE", "Moderate"),
+            ChipOption("WEAK", "Weak"),
+            ChipOption("ABSENT", "Absent")
         )
         else -> emptyList()
     }
@@ -397,6 +410,7 @@ private fun valueForField(current: VitalsInput, field: VitalField): String {
         VitalField.TEMP -> current.temp?.toString() ?: ""
         VitalField.SEVO -> current.sevoIso?.toString() ?: ""
         VitalField.O2 -> current.o2Flow?.toString() ?: ""
+        VitalField.FLUIDS -> current.fluids?.toString() ?: ""
         else -> ""
     }
 }
@@ -412,6 +426,7 @@ private fun applyNumeric(current: VitalsInput, field: VitalField, value: String)
         VitalField.TEMP -> current.copy(temp = doubleValue)
         VitalField.SEVO -> current.copy(sevoIso = doubleValue)
         VitalField.O2 -> current.copy(o2Flow = doubleValue)
+        VitalField.FLUIDS -> current.copy(fluids = doubleValue)
         else -> current
     }
 }
@@ -421,6 +436,7 @@ private fun currentSelectionId(current: VitalsInput, field: VitalField): String?
         VitalField.ECG -> current.ecg?.name
         VitalField.CRT -> current.crt?.name
         VitalField.MM -> current.mucousMembrane?.name
+        VitalField.PULSE -> current.pulseQuality?.name
         else -> null
     }
 }
@@ -430,6 +446,7 @@ private fun applyChipSelection(current: VitalsInput, field: VitalField, selected
         VitalField.ECG -> current.copy(ecg = selectedId?.let { ECGReading.valueOf(it) })
         VitalField.CRT -> current.copy(crt = selectedId?.let { CRTReading.valueOf(it) })
         VitalField.MM -> current.copy(mucousMembrane = selectedId?.let { MucousMembraneReading.valueOf(it) })
+        VitalField.PULSE -> current.copy(pulseQuality = selectedId?.let { PulseQuality.valueOf(it) })
         else -> current
     }
 }

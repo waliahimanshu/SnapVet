@@ -11,6 +11,7 @@ import com.snapvet.domain.model.Case
 import com.snapvet.domain.model.CaseStatus
 import com.snapvet.domain.model.ECGReading
 import com.snapvet.domain.model.MucousMembraneReading
+import com.snapvet.domain.model.PulseQuality
 import com.snapvet.domain.model.Species
 import com.snapvet.domain.model.VitalRecord
 import kotlin.time.Instant
@@ -44,9 +45,12 @@ internal fun Vital_records.toDomain(): VitalRecord {
         temp = temp,
         sevoIso = sevo_iso,
         o2Flow = o2_flow,
-        ecg = ecg?.let { ECGReading.valueOf(it) },
-        crt = crt?.let { CRTReading.valueOf(it) },
-        mucousMembrane = mucous_membrane?.let { MucousMembraneReading.valueOf(it) },
+        fluids = fluids,
+        ecg = ecg?.let { runCatching { ECGReading.valueOf(it) }.getOrNull() },
+        ecgOtherText = ecg_other_text,
+        crt = crt?.let { runCatching { CRTReading.valueOf(it) }.getOrNull() },
+        pulseQuality = pulse_quality?.let { runCatching { PulseQuality.valueOf(it) }.getOrNull() },
+        mucousMembrane = mucous_membrane?.let { runCatching { MucousMembraneReading.valueOf(it) }.getOrNull() },
         notes = notes
     )
 }
