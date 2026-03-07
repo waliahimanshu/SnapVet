@@ -4,6 +4,7 @@ import Shared
 struct ContentView: View {
     @StateObject private var appState = AppState()
     @AppStorage("snapvet_appearance_mode") private var appearanceModeRawValue = AppAppearance.dark.rawValue
+    @Namespace private var caseHistoryTransitionNamespace
 
     enum Route: Hashable {
         case caseSetup
@@ -18,6 +19,7 @@ struct ContentView: View {
         NavigationStack(path: $path) {
             CaseListScreen(
                 viewModel: appState.caseListWrapper,
+                sharedTransitionNamespace: caseHistoryTransitionNamespace,
                 onOpenSettings: {
                     path.append(.settings)
                 },
@@ -84,6 +86,7 @@ struct ContentView: View {
                         RecordTableScreen(
                             viewModel: records,
                             caseInfo: selectedCase,
+                            sharedTransitionNamespace: caseHistoryTransitionNamespace,
                             onDeleteCase: {
                                 Task {
                                     await appState.deleteCase(caseId: selectedCase.id)
