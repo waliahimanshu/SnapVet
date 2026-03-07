@@ -6,6 +6,7 @@ struct RecordTableScreen: View {
     @ObservedObject var viewModel: RecordTableViewModelWrapper
     let caseInfo: Case
     let sharedTransitionNamespace: Namespace.ID
+    var onBack: () -> Void = {}
     var onDeleteCase: () -> Void = {}
 
     @State private var sharePayload: ShareSheetPayload?
@@ -83,6 +84,7 @@ struct RecordTableScreen: View {
         } message: {
             Text("This permanently removes the case and all vital records.")
         }
+        .navigationBarBackButtonHidden(true)
     }
 
     private var isExportErrorPresented: Binding<Bool> {
@@ -94,12 +96,30 @@ struct RecordTableScreen: View {
 
     @ToolbarContentBuilder
     private var toolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .topBarLeading) {
+            backButton
+        }
         ToolbarItem(placement: .topBarTrailing) {
             deleteButton
         }
         ToolbarItem(placement: .topBarTrailing) {
             exportButton
         }
+    }
+
+    private var backButton: some View {
+        Button(action: {
+            SnapVetHaptics.lightTap()
+            onBack()
+        }) {
+            Image(systemName: "chevron.backward")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(.primary)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Back")
     }
 
     private var deleteButton: some View {
@@ -149,9 +169,7 @@ struct RecordTableScreen: View {
             HStack(spacing: 10) {
                 statusChip
                 Text(displaySpecies(caseInfo.species))
-                    .navigationTransition(.zoom(sourceID: caseHistoryTransitionId(field: .speciesText), in: sharedTransitionNamespace))
                 Text(displayWeight(caseInfo.weight))
-                    .navigationTransition(.zoom(sourceID: caseHistoryTransitionId(field: .weight), in: sharedTransitionNamespace))
             }
             .font(SnapVetFont.titleMedium)
             .foregroundColor(.snapvetTextSecondary)
@@ -312,8 +330,6 @@ struct RecordTableScreen: View {
 
     private enum CaseHistoryTransitionField: String {
         case patientName
-        case speciesText
-        case weight
         case speciesIcon
     }
 

@@ -205,16 +205,20 @@ struct MonitoringScreen: View {
             )
             .padding(12)
             .background(Color.snapvetPrimaryBg)
-            .presentationDetents([.medium])
+            .presentationDetents([.height(520), .large])
             .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $showBpEditor) {
             bloodPressureEditor
                 .background(Color.snapvetPrimaryBg)
+                .presentationDetents([.height(680), .large])
+                .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $showEcgOtherEditor) {
             ecgOtherEditor
                 .background(Color.snapvetPrimaryBg)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
         }
         .navigationBarBackButtonHidden(true)
         .toolbar {

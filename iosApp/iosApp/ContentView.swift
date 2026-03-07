@@ -87,6 +87,11 @@ struct ContentView: View {
                             viewModel: records,
                             caseInfo: selectedCase,
                             sharedTransitionNamespace: caseHistoryTransitionNamespace,
+                            onBack: {
+                                if !path.isEmpty {
+                                    path.removeLast()
+                                }
+                            },
                             onDeleteCase: {
                                 Task {
                                     await appState.deleteCase(caseId: selectedCase.id)

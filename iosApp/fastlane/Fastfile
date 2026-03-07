@@ -1,3 +1,5 @@
+require "fileutils"
+
 def required_env(name)
   value = ENV[name]
   UI.user_error!("Missing required environment variable: #{name}") if value.nil? || value.strip.empty?
@@ -15,6 +17,45 @@ def asc_api_key
 end
 
 platform :ios do
+  desc "Copy iPad screenshots from Desktop and frame them for App Store"
+  lane :frame_ipad do |options|
+    project_root = File.expand_path("..", __dir__)
+    screenshots_root = File.join(project_root, "appstore_screenshots")
+    raw_dir = File.join(screenshots_root, "ipad_raw")
+    framed_dir = File.join(screenshots_root, "ipad_framed")
+    source_dir = options[:source_dir].to_s.strip
+    source_dir = File.expand_path("~/Desktop") if source_dir.empty?
+
+    FileUtils.mkdir_p(raw_dir)
+    FileUtils.mkdir_p(framed_dir)
+
+    copied = 0
+    Dir.glob(File.join(source_dir, "*.png")).sort.each do |file|
+      name = File.basename(file)
+      next unless name.include?("Simulator Screenshot") && name.include?("iPad")
+
+      FileUtils.cp(file, File.join(raw_dir, name))
+      copied += 1
+    end
+
+    UI.user_error!("No iPad simulator screenshots found in #{source_dir}") if copied.zero?
+    UI.message("Copied #{copied} iPad screenshot(s) to #{raw_dir}")
+
+    frameit(
+      path: raw_dir,
+      use_platform: "IOS"
+    )
+
+    output_dir = File.join(raw_dir, "framed")
+    if Dir.exist?(output_dir)
+      Dir.glob(File.join(output_dir, "*.png")).each do |png|
+        FileUtils.cp(png, File.join(framed_dir, File.basename(png)))
+      end
+    end
+
+    UI.success("Framed screenshots are available in #{framed_dir}")
+  end
+
   desc "Build and upload iOS app to TestFlight"
   lane :beta do
     setup_ci if ENV["CI"]

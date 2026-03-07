@@ -3,32 +3,57 @@ import SwiftUI
 private struct WarningRuleRow: Identifiable {
     let id = UUID()
     let parameter: String
-    let species: String
-    let orange: String
-    let red: String
+    let canineWarning: String
+    let canineAlert: String
+    let felineWarning: String
+    let felineAlert: String
 }
 
 struct WarningRulesView: View {
     @Environment(\.dismiss) private var dismiss
 
     private let rows: [WarningRuleRow] = [
-        WarningRuleRow(parameter: "HR", species: "Dog", orange: "50...160", red: "outside 40...200"),
-        WarningRuleRow(parameter: "HR", species: "Cat", orange: "80...180", red: "outside 60...220"),
-        WarningRuleRow(parameter: "RR", species: "Dog", orange: "8...40", red: "outside 5...55"),
-        WarningRuleRow(parameter: "RR", species: "Cat", orange: "12...45", red: "outside 8...60"),
-        WarningRuleRow(parameter: "BP Systolic", species: "Dog", orange: "80...170", red: "outside 70...190"),
-        WarningRuleRow(parameter: "BP Systolic", species: "Cat", orange: "90...170", red: "outside 80...190"),
-        WarningRuleRow(parameter: "MAP", species: "Dog", orange: "60...120", red: "outside 55...130"),
-        WarningRuleRow(parameter: "MAP", species: "Cat", orange: "65...120", red: "outside 60...130"),
-        WarningRuleRow(parameter: "Temp (°C)", species: "Dog", orange: "36.5...39.0", red: "outside 35.5...40.0"),
-        WarningRuleRow(parameter: "Temp (°C)", species: "Cat", orange: "37.0...39.5", red: "outside 36.0...40.5")
+        WarningRuleRow(
+            parameter: "HR",
+            canineWarning: "50...160",
+            canineAlert: "40...200",
+            felineWarning: "80...180",
+            felineAlert: "60...220"
+        ),
+        WarningRuleRow(
+            parameter: "RR",
+            canineWarning: "8...40",
+            canineAlert: "5...55",
+            felineWarning: "12...45",
+            felineAlert: "8...60"
+        ),
+        WarningRuleRow(
+            parameter: "BP Systolic",
+            canineWarning: "80...170",
+            canineAlert: "70...190",
+            felineWarning: "90...170",
+            felineAlert: "80...190"
+        ),
+        WarningRuleRow(
+            parameter: "MAP",
+            canineWarning: "60...120",
+            canineAlert: "55...130",
+            felineWarning: "65...120",
+            felineAlert: "60...130"
+        ),
+        WarningRuleRow(
+            parameter: "Temp (°C)",
+            canineWarning: "36.5...39.0",
+            canineAlert: "35.5...40.0",
+            felineWarning: "37.0...39.5",
+            felineAlert: "36.0...40.5"
+        )
     ]
 
     private let columns: [GridItem] = [
-        GridItem(.flexible(minimum: 90), alignment: .leading),
-        GridItem(.flexible(minimum: 70), alignment: .leading),
-        GridItem(.flexible(minimum: 110), alignment: .leading),
-        GridItem(.flexible(minimum: 130), alignment: .leading)
+        GridItem(.flexible(minimum: 120), alignment: .leading),
+        GridItem(.flexible(minimum: 180), alignment: .leading),
+        GridItem(.flexible(minimum: 180), alignment: .leading)
     ]
 
     var body: some View {
@@ -36,15 +61,13 @@ struct WarningRulesView: View {
             ScrollView([.vertical, .horizontal]) {
                 LazyVGrid(columns: columns, spacing: 10) {
                     headerCell("Parameter")
-                    headerCell("Species")
-                    headerCell("Orange")
-                    headerCell("Red")
+                    speciesHeader("Canine", symbol: "dog.fill")
+                    speciesHeader("Feline", symbol: "cat.fill")
 
                     ForEach(rows) { row in
                         dataCell(row.parameter)
-                        dataCell(row.species)
-                        dataCell(row.orange, color: .snapvetAccentWarning)
-                        dataCell(row.red, color: .snapvetAccentAlert)
+                        rangeCell(warning: row.canineWarning, alert: row.canineAlert)
+                        rangeCell(warning: row.felineWarning, alert: row.felineAlert)
                     }
                 }
                 .padding(16)
@@ -83,6 +106,51 @@ struct WarningRulesView: View {
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .fill(Color.snapvetTileBg.opacity(0.75))
             )
+    }
+
+    private func rangeCell(warning: String, alert: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 6) {
+                Text("Warning:")
+                    .font(SnapVetFont.bodySmall.weight(.semibold))
+                    .foregroundColor(.snapvetAccentWarning)
+                Text(warning)
+                    .font(SnapVetFont.bodySmall)
+                    .foregroundColor(.snapvetTextSecondary)
+            }
+            HStack(spacing: 6) {
+                Text("Alert:")
+                    .font(SnapVetFont.bodySmall.weight(.semibold))
+                    .foregroundColor(.snapvetAccentAlert)
+                Text(alert)
+                    .font(SnapVetFont.bodySmall)
+                    .foregroundColor(.snapvetTextSecondary)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 8)
+        .padding(.horizontal, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(Color.snapvetTileBg.opacity(0.75))
+        )
+    }
+
+    private func speciesHeader(_ title: String, symbol: String) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: symbol)
+                .foregroundColor(.snapvetAccentPrimary)
+            Text(title)
+        }
+        .font(SnapVetFont.bodySmall.weight(.bold))
+        .foregroundColor(.snapvetTextPrimary)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 8)
+        .padding(.horizontal, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .fill(Color.snapvetHeaderBg.opacity(0.75))
+        )
     }
 }
 

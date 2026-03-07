@@ -112,10 +112,8 @@ struct CaseListScreen: View {
 
                 HStack(spacing: 6) {
                     Text(displaySpecies(item.species))
-                        .matchedTransitionSource(id: caseHistoryTransitionId(for: item, field: .speciesText), in: sharedTransitionNamespace)
                     Text("•")
                     Text(displayWeight(item.weight))
-                        .matchedTransitionSource(id: caseHistoryTransitionId(for: item, field: .weight), in: sharedTransitionNamespace)
                     Text("•")
                     Text(item.procedure)
                 }
@@ -171,8 +169,6 @@ struct CaseListScreen: View {
 
     private enum CaseHistoryTransitionField: String {
         case patientName
-        case speciesText
-        case weight
         case speciesIcon
     }
 
