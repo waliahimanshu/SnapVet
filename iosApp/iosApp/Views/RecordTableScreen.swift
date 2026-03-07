@@ -5,6 +5,7 @@ import UIKit
 struct RecordTableScreen: View {
     @ObservedObject var viewModel: RecordTableViewModelWrapper
     let caseInfo: Case
+    let sharedTransitionNamespace: Namespace.ID
     var onDeleteCase: () -> Void = {}
 
     @State private var sharePayload: ShareSheetPayload?
@@ -139,14 +140,24 @@ struct RecordTableScreen: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(caseInfo.patientName)
-                .font(SnapVetFont.headlineLarge)
-                .foregroundColor(.snapvetTextPrimary)
+            HStack(spacing: 10) {
+                speciesSymbol(for: caseInfo.species)
+                    .navigationTransition(.zoom(sourceID: caseHistoryTransitionId(field: .speciesIcon), in: sharedTransitionNamespace))
+
+                Text(caseInfo.patientName)
+                    .font(SnapVetFont.headlineLarge)
+                    .foregroundColor(.snapvetTextPrimary)
+                    .navigationTransition(.zoom(sourceID: caseHistoryTransitionId(field: .patientName), in: sharedTransitionNamespace))
+
+                Spacer(minLength: 0)
+            }
 
             HStack(spacing: 10) {
                 statusChip
                 Text(displaySpecies(caseInfo.species))
+                    .navigationTransition(.zoom(sourceID: caseHistoryTransitionId(field: .speciesText), in: sharedTransitionNamespace))
                 Text(displayWeight(caseInfo.weight))
+                    .navigationTransition(.zoom(sourceID: caseHistoryTransitionId(field: .weight), in: sharedTransitionNamespace))
             }
             .font(SnapVetFont.titleMedium)
             .foregroundColor(.snapvetTextSecondary)
@@ -291,6 +302,29 @@ struct RecordTableScreen: View {
             return "\(minutes / 60)h \(minutes % 60)m"
         }
         return "\(max(1, minutes))m"
+    }
+
+
+    private func speciesSymbol(for species: Species) -> some View {
+        Image(systemName: species == .dog ? "dog.fill" : "cat.fill")
+            .font(.system(size: 22, weight: .semibold))
+            .foregroundColor(.snapvetAccentPrimary)
+            .frame(width: 36, height: 36)
+            .background(
+                Circle()
+                    .fill(Color.snapvetHeaderBg.opacity(0.6))
+            )
+    }
+
+    private enum CaseHistoryTransitionField: String {
+        case patientName
+        case speciesText
+        case weight
+        case speciesIcon
+    }
+
+    private func caseHistoryTransitionId(field: CaseHistoryTransitionField) -> String {
+        "case-history-\(caseInfo.id)-\(field.rawValue)"
     }
 
     private func displaySpecies(_ value: Species) -> String {

@@ -4,6 +4,7 @@ import UIKit
 
 struct CaseListScreen: View {
     @ObservedObject var viewModel: CaseListViewModelWrapper
+    let sharedTransitionNamespace: Namespace.ID
     var onOpenSettings: () -> Void = {}
     var onNewCase: () -> Void = {}
     var onCaseSelected: (Case) -> Void = { _ in }
@@ -97,15 +98,27 @@ struct CaseListScreen: View {
             onCaseSelected(item)
         }) {
             VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .center) {
+                HStack(alignment: .center, spacing: 10) {
+                    speciesSymbol(for: item.species)
+                        .matchedTransitionSource(id: caseHistoryTransitionId(for: item, field: .speciesIcon), in: sharedTransitionNamespace)
+
                     Text(item.patientName)
                         .font(SnapVetFont.titleLarge)
                         .foregroundColor(.snapvetTextPrimary)
+                        .matchedTransitionSource(id: caseHistoryTransitionId(for: item, field: .patientName), in: sharedTransitionNamespace)
 
                     Spacer()
                 }
 
-                Text("\(displaySpecies(item.species))   \(displayWeight(item.weight))   \(item.procedure)")
+                HStack(spacing: 6) {
+                    Text(displaySpecies(item.species))
+                        .matchedTransitionSource(id: caseHistoryTransitionId(for: item, field: .speciesText), in: sharedTransitionNamespace)
+                    Text("•")
+                    Text(displayWeight(item.weight))
+                        .matchedTransitionSource(id: caseHistoryTransitionId(for: item, field: .weight), in: sharedTransitionNamespace)
+                    Text("•")
+                    Text(item.procedure)
+                }
                     .font(SnapVetFont.bodyMedium)
                     .foregroundColor(.snapvetTextSecondary)
                     .lineLimit(1)
@@ -142,6 +155,29 @@ struct CaseListScreen: View {
         .frame(maxWidth: .infinity)
         .padding(20)
         .snapVetGlassCard(cornerRadius: 18)
+    }
+
+
+    private func speciesSymbol(for species: Species) -> some View {
+        Image(systemName: species == .dog ? "dog.fill" : "cat.fill")
+            .font(.system(size: 18, weight: .semibold))
+            .foregroundColor(.snapvetAccentPrimary)
+            .frame(width: 30, height: 30)
+            .background(
+                Circle()
+                    .fill(Color.snapvetHeaderBg.opacity(0.6))
+            )
+    }
+
+    private enum CaseHistoryTransitionField: String {
+        case patientName
+        case speciesText
+        case weight
+        case speciesIcon
+    }
+
+    private func caseHistoryTransitionId(for item: Case, field: CaseHistoryTransitionField) -> String {
+        "case-history-\(item.id)-\(field.rawValue)"
     }
 
     private func displaySpecies(_ species: Species) -> String {
