@@ -1,0 +1,4 @@
+iosApp/appstore_screenshots/**/*.png filter=lfs diff=lfs merge=lfs -text
+iosApp/appstore_screenshots/**/*.jpg filter=lfs diff=lfs merge=lfs -text
+iosApp/appstore_screenshots/**/*.jpeg filter=lfs diff=lfs merge=lfs -text
+iosApp/appstore_screenshots/**/*.webp filter=lfs diff=lfs merge=lfs -text
