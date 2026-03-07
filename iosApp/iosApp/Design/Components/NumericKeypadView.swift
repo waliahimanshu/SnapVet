@@ -21,16 +21,18 @@ struct NumericKeypadView: View {
     var body: some View {
         VStack(spacing: 12) {
             // Current value display
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .center, spacing: 4) {
                 Text(currentValue.isEmpty ? "0" : currentValue)
                     .font(SnapVetFont.displayLarge)
                     .fontWeight(.bold)
                     .foregroundColor(.snapvetAccentPrimary)
                     .tracking(-1)
+                    .frame(maxWidth: .infinity, alignment: .center)
                 if let unitLabel, !unitLabel.isEmpty {
                     Text(unitLabel)
                         .font(SnapVetFont.bodySmall)
                         .foregroundColor(.snapvetTextSecondary)
+                        .frame(maxWidth: .infinity, alignment: .center)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .center)

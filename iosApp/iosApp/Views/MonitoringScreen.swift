@@ -129,10 +129,13 @@ struct MonitoringScreen: View {
                             }
                         } else {
                             vitalsGrid(columns: proxy.size.width < 650 ? 2 : 3)
+                            observationsPanel
                             recordedSnapshotsPanel
                         }
 
-                        observationsPanel
+                        if isWide {
+                            observationsPanel
+                        }
 
                         if let error = state.errorMessage {
                             Text(error)
@@ -202,6 +205,8 @@ struct MonitoringScreen: View {
             )
             .padding(12)
             .background(Color.snapvetPrimaryBg)
+            .presentationDetents([.medium])
+            .presentationDragIndicator(.visible)
         }
         .sheet(isPresented: $showBpEditor) {
             bloodPressureEditor
@@ -336,6 +341,9 @@ struct MonitoringScreen: View {
                         previousValue: previousValue(for: field)
                     ) {
                         feedbackSelection()
+                        dismissKeyboard()
+                        isNotesFieldFocused = false
+
                         if field == .bp {
                             bpSysInput = current.bpSys?.intValue.description ?? ""
                             bpDiaInput = current.bpDia?.intValue.description ?? ""
