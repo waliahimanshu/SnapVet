@@ -109,15 +109,12 @@ struct RecordTableScreen: View {
         }) {
             Image(systemName: "trash")
                 .font(SnapVetFont.titleMedium.weight(.bold))
-                .foregroundColor(.white)
-                .frame(width: 30, height: 30)
-                .background(
-                    Circle()
-                        .fill(Color.snapvetAccentAlert)
-                )
+                .foregroundStyle(.primary)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .padding(.leading, 8)
+        .accessibilityLabel("Delete case")
     }
 
     private var exportButton: some View {
@@ -127,15 +124,12 @@ struct RecordTableScreen: View {
         }) {
             Image(systemName: "square.and.arrow.up")
                 .font(SnapVetFont.titleMedium.weight(.bold))
-                .foregroundColor(.white)
-                .frame(width: 30, height: 30)
-                .background(
-                    Circle()
-                        .fill(Color.snapvetAccentPrimary)
-                )
+                .foregroundStyle(.primary)
+                .frame(width: 44, height: 44)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Export PDF")
+        .accessibilityLabel("Share PDF")
     }
 
     private var header: some View {
