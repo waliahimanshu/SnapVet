@@ -94,6 +94,7 @@ struct MonitoringScreen: View {
     @State private var lastErrorMessage: String?
     @State private var nudgeHapticArmed = true
     @FocusState private var isNotesFieldFocused: Bool
+    @FocusState private var isEcgOtherFieldFocused: Bool
     @AppStorage("snapvet_weight_unit") private var weightUnitRawValue = WeightUnit.lb.rawValue
     @AppStorage("snapvet_temperature_unit") private var temperatureUnitRawValue = TemperatureUnit.celsius.rawValue
     @AppStorage("snapvet_save_nudge_interval_minutes") private var saveNudgeIntervalMinutes = 5
@@ -975,6 +976,7 @@ struct MonitoringScreen: View {
 
                 TextField("Type ECG value", text: $ecgOtherInput)
                     .textInputAutocapitalization(.words)
+                    .focused($isEcgOtherFieldFocused)
                     .padding(.horizontal, 14)
                     .frame(height: 46)
                     .background(
@@ -990,6 +992,14 @@ struct MonitoringScreen: View {
                 Spacer()
             }
             .padding(16)
+            .onAppear {
+                DispatchQueue.main.async {
+                    isEcgOtherFieldFocused = true
+                }
+            }
+            .onDisappear {
+                isEcgOtherFieldFocused = false
+            }
             .navigationTitle("ECG Other")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
