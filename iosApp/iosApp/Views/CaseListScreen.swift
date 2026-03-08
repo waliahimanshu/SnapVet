@@ -70,10 +70,17 @@ struct CaseListScreen: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text("SnapVet")
-                .font(.system(size: 48, weight: .bold, design: .rounded))
-                .foregroundColor(.snapvetTextPrimary)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 12) {
+                Image("BrandLogoInApp")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 44, height: 44)
+
+                Text("SnapVet")
+                    .font(.system(size: 48, weight: .bold, design: .rounded))
+                    .foregroundColor(.snapvetTextPrimary)
+            }
 
             Text("Anesthesia Monitoring")
                 .font(SnapVetFont.titleLarge)

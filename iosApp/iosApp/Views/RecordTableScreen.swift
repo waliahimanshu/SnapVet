@@ -265,7 +265,7 @@ struct RecordTableScreen: View {
 
     private func rowCells(record: VitalRecord, index: Int) -> [RowCell] {
         [
-            RowCell(value: "\(viewModel.state.records.count - index)", width: 42),
+            RowCell(value: "\(index + 1)", width: 42),
             RowCell(value: formatTime(record.timestamp), width: 96),
             RowCell(value: record.hr?.intValue.description ?? "-", width: 58),
             RowCell(value: record.rr?.intValue.description ?? "-", width: 58),
@@ -412,7 +412,8 @@ struct RecordTableScreen: View {
     private func exportPdf() {
         do {
             let data = buildPdfData()
-            let fileName = "SnapVet-\(sanitizedFileName(caseInfo.patientName))-\(DateFormatter.snapvetExportStamp.string(from: Date())).pdf"
+            let humanDate = DateFormatter.snapvetExportReadable.string(from: Date())
+            let fileName = "\(sanitizedFileName(caseInfo.patientName))-\(sanitizedFileName(humanDate)).pdf"
             let url = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
             try data.write(to: url, options: .atomic)
             sharePayload = ShareSheetPayload(activityItems: [url])
@@ -424,9 +425,12 @@ struct RecordTableScreen: View {
     }
 
     private func buildPdfData() -> Data {
+        let chronologicalRecords = viewModel.state.records.sorted {
+            $0.timestamp.toEpochMilliseconds() < $1.timestamp.toEpochMilliseconds()
+        }
         let builder = RecordTablePdfBuilder(
             caseInfo: caseInfo,
-            records: viewModel.state.records,
+            records: chronologicalRecords,
             durationText: durationText,
             weightUnit: weightUnit,
             temperatureUnit: temperatureUnit
@@ -555,6 +559,16 @@ private struct RecordTablePdfBuilder {
             func beginPage(showCaseHeader: Bool) {
                 context.beginPage()
                 y = margin
+                if let logo = UIImage(named: "BrandLogoInApp") {
+                    let logoSize: CGFloat = 26
+                    let logoRect = CGRect(
+                        x: pageRect.width - margin - logoSize,
+                        y: y,
+                        width: logoSize,
+                        height: logoSize
+                    )
+                    logo.draw(in: logoRect)
+                }
                 drawParagraph("SnapVet Vital Records Export", attrs: titleAttrs, spacing: 8)
                 if showCaseHeader {
                     drawParagraph("Patient: \(caseInfo.patientName)", attrs: headerAttrs)
@@ -667,7 +681,7 @@ private struct RecordTablePdfBuilder {
 
             drawTableHeaderRow()
             for index in records.indices {
-                let number = records.count - index
+                let number = index + 1
                 drawRecordRow(number: number, record: records[index])
             }
         }
@@ -770,6 +784,12 @@ private extension DateFormatter {
     static let snapvetExportStamp: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyyMMdd-HHmmss"
+        return formatter
+    }()
+
+    static let snapvetExportReadable: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "MMM d yyyy h.mm a"
         return formatter
     }()
 }

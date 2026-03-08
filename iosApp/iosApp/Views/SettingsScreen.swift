@@ -46,6 +46,20 @@ struct SettingsScreen: View {
 
             Section("About") {
                 LabeledContent("App Version", value: appVersion)
+                if let websiteURL {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Image("BrandLogoInApp")
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 64, height: 64)
+
+                        HStack(spacing: 0) {
+                            Text("Built with ❤️ for every pet - ")
+                            Link("LifeCare Pet Hospital", destination: websiteURL)
+                        }
+                        .font(.footnote)
+                    }
+                }
             }
         }
         .navigationTitle("Settings")
@@ -60,6 +74,10 @@ struct SettingsScreen: View {
         let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
         let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—"
         return "\(version) (\(build))"
+    }
+
+    private var websiteURL: URL? {
+        URL(string: "https://www.lifecarepethospital.com/")
     }
 }
 

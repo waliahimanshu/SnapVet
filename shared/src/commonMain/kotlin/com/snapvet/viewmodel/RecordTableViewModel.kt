@@ -21,7 +21,10 @@ class RecordTableViewModel(
         _state.value = _state.value.copy(isLoading = true)
         scope.launch {
             observeVitalRecordsUsecase(caseId).collect { records ->
-                _state.value = _state.value.copy(records = records, isLoading = false)
+                _state.value = _state.value.copy(
+                    records = records.sortedBy { it.timestamp },
+                    isLoading = false
+                )
             }
         }
     }
