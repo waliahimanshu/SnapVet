@@ -47,17 +47,18 @@ struct SettingsScreen: View {
             Section("About") {
                 LabeledContent("App Version", value: appVersion)
                 if let websiteURL {
-                    VStack(alignment: .leading, spacing: 8) {
+                    HStack(alignment: .center, spacing: 12) {
                         Image("BrandLogoInApp")
                             .resizable()
                             .scaledToFit()
                             .frame(width: 64, height: 64)
 
-                        HStack(spacing: 0) {
-                            Text("Built with ❤️ for every pet - ")
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Built with ❤️ for every pet")
                             Link("LifeCare Pet Hospital", destination: websiteURL)
                         }
                         .font(.footnote)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 }
             }

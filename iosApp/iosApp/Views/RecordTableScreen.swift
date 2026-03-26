@@ -251,12 +251,12 @@ struct RecordTableScreen: View {
 
     private func tableRow(record: VitalRecord, index: Int) -> some View {
         let cells = rowCells(record: record, index: index)
-        return HStack(spacing: 0) {
+        return HStack(alignment: .top, spacing: 0) {
             ForEach(Array(cells.enumerated()), id: \.offset) { _, cell in
                 tableCell(cell.value, width: cell.width)
             }
         }
-        .frame(height: 42)
+        .frame(minHeight: 42, alignment: .topLeading)
         .overlay(alignment: .bottom) {
             Rectangle()
                 .fill(Color.snapvetDivider.opacity(0.7))
@@ -289,7 +289,11 @@ struct RecordTableScreen: View {
         Text(value)
             .font(SnapVetFont.bodyMedium)
             .foregroundColor(.snapvetTextPrimary)
-            .frame(width: width, alignment: .leading)
+            .lineLimit(nil)
+            .multilineTextAlignment(.leading)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(width: width, alignment: .topLeading)
+            .padding(.vertical, 8)
     }
 
     @ViewBuilder
