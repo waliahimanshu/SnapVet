@@ -505,27 +505,27 @@ private struct RecordTablePdfBuilder {
 
     private var fixedColumns: [(title: String, width: CGFloat)] {
         [
-            ("#", 26),
-            ("Time", 72),
-            ("HR", 32),
-            ("RR", 32),
-            ("SpO₂", 38),
-            ("EtCO₂", 44),
-            ("BP", 92),
-            ("Temp \(temperatureUnit.title)", 58),
-            ("Iso", 34),
-            ("O₂", 34),
-            ("Fluids", 44),
-            ("ECG", 64),
-            ("CRT", 56),
-            ("Pulse", 52),
-            ("MM", 78)
+            ("#", 20),
+            ("Time", 52),
+            ("HR", 26),
+            ("RR", 26),
+            ("SpO₂", 34),
+            ("EtCO₂", 38),
+            ("BP", 72),
+            ("Temp \(temperatureUnit.title)", 48),
+            ("Iso", 28),
+            ("O₂", 28),
+            ("Fluids", 38),
+            ("ECG", 56),
+            ("CRT", 50),
+            ("Pulse", 44),
+            ("MM", 64)
         ]
     }
 
     private var notesWidth: CGFloat {
         let fixedTotal = fixedColumns.reduce(0) { $0 + $1.width }
-        return max(120, contentWidth - fixedTotal)
+        return max(80, contentWidth - fixedTotal)
     }
 
     private var columnTitles: [String] {
