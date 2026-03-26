@@ -1,6 +1,7 @@
 import SwiftUI
 import Shared
 import UIKit
+import CoreText
 
 struct RecordTableScreen: View {
     @ObservedObject var viewModel: RecordTableViewModelWrapper
@@ -569,7 +570,7 @@ private struct RecordTablePdfBuilder {
                     )
                     logo.draw(in: logoRect)
                 }
-                drawParagraph("SnapVet Vital Records Export", attrs: titleAttrs, spacing: 8)
+                drawParagraph("SurgiVitals Records Export", attrs: titleAttrs, spacing: 8)
                 if showCaseHeader {
                     drawParagraph("Patient: \(caseInfo.patientName)", attrs: headerAttrs)
                     drawParagraph("Species: \(displaySpecies(caseInfo.species))   Weight: \(displayWeight(caseInfo.weight))", attrs: headerAttrs)
@@ -610,6 +611,52 @@ private struct RecordTablePdfBuilder {
                 y += tableHeaderHeight
             }
 
+            var rowParagraphStyle: NSMutableParagraphStyle {
+                let paragraph = NSMutableParagraphStyle()
+                paragraph.alignment = .left
+                paragraph.lineBreakMode = .byWordWrapping
+                return paragraph
+            }
+
+            var rowCellAttrs: [NSAttributedString.Key: Any] {
+                var attrs = bodyAttrs
+                attrs[.paragraphStyle] = rowParagraphStyle
+                return attrs
+            }
+
+            func visibleCharacterCount(
+                for text: String,
+                width: CGFloat,
+                maxHeight: CGFloat,
+                attrs: [NSAttributedString.Key: Any]
+            ) -> Int {
+                guard !text.isEmpty else { return 0 }
+                let attributed = NSAttributedString(string: text, attributes: attrs)
+                let framesetter = CTFramesetterCreateWithAttributedString(attributed)
+                let path = CGPath(rect: CGRect(x: 0, y: 0, width: width, height: maxHeight), transform: nil)
+                let frame = CTFramesetterCreateFrame(
+                    framesetter,
+                    CFRange(location: 0, length: attributed.length),
+                    path,
+                    nil
+                )
+                let visibleRange = CTFrameGetVisibleStringRange(frame)
+                return max(0, visibleRange.length)
+            }
+
+            func splitText(_ text: String, visibleUTF16Count: Int) -> (visible: String, remaining: String) {
+                guard !text.isEmpty else { return ("", "") }
+                let nsText = text as NSString
+                let length = nsText.length
+                let count = min(max(0, visibleUTF16Count), length)
+                if count >= length {
+                    return (text, "")
+                }
+                let visible = nsText.substring(to: count)
+                let remainder = nsText.substring(from: count).trimmingCharacters(in: .whitespacesAndNewlines)
+                return (visible, remainder)
+            }
+
             func rowValues(number: Int, record: VitalRecord) -> [String] {
                 let notes = normalizedNotes(record.notes)
                 return [
@@ -633,43 +680,93 @@ private struct RecordTablePdfBuilder {
             }
 
             func drawRecordRow(number: Int, record: VitalRecord) {
-                let values = rowValues(number: number, record: record)
-                let notes = values.last ?? "-"
-                let notesTextWidth = notesWidth - (cellPaddingX * 2)
-                let notesHeight = textHeight(notes, width: notesTextWidth, attrs: bodyAttrs)
-                let rowHeight = max(minimumRowHeight, notesHeight + (cellPaddingY * 2))
+                let widths = columnWidths
+                var remainingValues = rowValues(number: number, record: record)
 
-                if y + rowHeight > pageRect.height - margin {
+                while true {
+                    if y + minimumRowHeight > pageRect.height - margin {
+                        beginPage(showCaseHeader: false)
+                        drawTableHeaderRow()
+                    }
+
+                    let availableHeight = pageRect.height - margin - y
+                    let maxTextHeight = max(1, availableHeight - (cellPaddingY * 2))
+                    var fragmentValues = Array(repeating: "", count: remainingValues.count)
+                    var nextRemainingValues = Array(repeating: "", count: remainingValues.count)
+                    var fragmentContentHeight: CGFloat = 0
+                    var canDrawFragment = true
+
+                    for index in remainingValues.indices {
+                        let width = widths[index]
+                        let textWidth = max(1, width - (cellPaddingX * 2))
+                        let currentText = remainingValues[index]
+
+                        if currentText.isEmpty {
+                            continue
+                        }
+
+                        let visibleCount = visibleCharacterCount(
+                            for: currentText,
+                            width: textWidth,
+                            maxHeight: maxTextHeight,
+                            attrs: rowCellAttrs
+                        )
+
+                        if visibleCount == 0 {
+                            canDrawFragment = false
+                            break
+                        }
+
+                        let split = splitText(currentText, visibleUTF16Count: visibleCount)
+                        fragmentValues[index] = split.visible
+                        nextRemainingValues[index] = split.remaining
+
+                        let visibleHeight = textHeight(split.visible, width: textWidth, attrs: rowCellAttrs)
+                        fragmentContentHeight = max(fragmentContentHeight, visibleHeight)
+                    }
+
+                    if !canDrawFragment {
+                        beginPage(showCaseHeader: false)
+                        drawTableHeaderRow()
+                        continue
+                    }
+
+                    let fragmentHeight = max(minimumRowHeight, fragmentContentHeight + (cellPaddingY * 2))
+                    if fragmentHeight > availableHeight {
+                        beginPage(showCaseHeader: false)
+                        drawTableHeaderRow()
+                        continue
+                    }
+
+                    var x = margin
+                    for index in fragmentValues.indices {
+                        let width = widths[index]
+                        let value = fragmentValues[index]
+                        let cellRect = CGRect(x: x, y: y, width: width, height: fragmentHeight)
+                        UIColor.darkGray.setStroke()
+                        let border = UIBezierPath(rect: cellRect)
+                        border.lineWidth = 0.4
+                        border.stroke()
+
+                        (value as NSString).draw(
+                            with: cellRect.insetBy(dx: cellPaddingX, dy: cellPaddingY),
+                            options: [.usesLineFragmentOrigin, .usesFontLeading],
+                            attributes: rowCellAttrs,
+                            context: nil
+                        )
+                        x += width
+                    }
+
+                    y += fragmentHeight
+
+                    if nextRemainingValues.allSatisfy({ $0.isEmpty }) {
+                        break
+                    }
+
+                    remainingValues = nextRemainingValues
                     beginPage(showCaseHeader: false)
                     drawTableHeaderRow()
                 }
-
-                var x = margin
-                let widths = columnWidths
-                for index in values.indices {
-                    let width = widths[index]
-                    let value = values[index]
-                    let cellRect = CGRect(x: x, y: y, width: width, height: rowHeight)
-                    UIColor.darkGray.setStroke()
-                    let border = UIBezierPath(rect: cellRect)
-                    border.lineWidth = 0.4
-                    border.stroke()
-
-                    let paragraph = NSMutableParagraphStyle()
-                    paragraph.alignment = .left
-                    paragraph.lineBreakMode = index == values.count - 1 ? .byWordWrapping : .byTruncatingTail
-                    var attrs = bodyAttrs
-                    attrs[.paragraphStyle] = paragraph
-                    (value as NSString).draw(
-                        with: cellRect.insetBy(dx: cellPaddingX, dy: cellPaddingY),
-                        options: [.usesLineFragmentOrigin, .usesFontLeading],
-                        attributes: attrs,
-                        context: nil
-                    )
-                    x += width
-                }
-
-                y += rowHeight
             }
 
             beginPage(showCaseHeader: true)
